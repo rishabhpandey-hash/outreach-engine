@@ -5,106 +5,157 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Outreach Engine — internal</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a66c2'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'%3EOE%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236B21A8'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='15' font-weight='bold' fill='white' text-anchor='middle'%3EOE%3C/text%3E%3C/svg%3E">
 <style>
 :root{
-  --bg:#f6f7f9; --panel:#fff; --ink:#14181f; --muted:#68707d; --line:#e3e6ea;
-  --brand:#0a66c2; --brand-ink:#fff; --warn:#b4690e; --warn-bg:#fdf6e8;
-  --bad:#b42318; --bad-bg:#fdf2f1; --good:#0f7b4f; --good-bg:#eef8f2;
-  --partner:#6b3fa0; --partner-bg:#f4effa; --b2b:#0a66c2; --b2b-bg:#eaf2fb;
-  --member:#0f7b6c; --member-bg:#e9f6f3; --radius:9px;
+  --purple:#6B21A8; --purple-dark:#4C1D95; --purple-soft:#F5F0FB; --purple-line:#E4D7F3;
+  --white:#fff; --gray:#F9FAFB; --line:#E5E7EB;
+  --ink:#111827; --ink2:#6B7280;
+  --green:#059669; --green-soft:#ECFDF5; --green-line:#B7E4CE;
+  --amber:#D97706; --amber-soft:#FFFBEB; --amber-line:#F3DFB0;
+  --red:#DC2626; --red-soft:#FEF2F2; --red-line:#F5CFCF;
+  --r:10px;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);
-  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);
-  background:#fff;padding:6px 11px;color:var(--ink)}
-button:hover:not(:disabled){background:#f0f2f5}
-button:disabled{opacity:.5;cursor:not-allowed}
-button.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:600}
-button.primary:hover:not(:disabled){background:#08508f}
-button.danger{color:var(--bad);border-color:#f0c9c5}
-input,select,textarea{font:inherit;padding:6px 9px;border:1px solid var(--line);
-  border-radius:6px;background:#fff;color:var(--ink);width:100%}
-textarea{resize:vertical;line-height:1.55}
-a{color:var(--brand)}
+html,body{margin:0}
+body{background:var(--gray);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+
+button{font:inherit;cursor:pointer;border-radius:7px;border:1px solid var(--line);
+  background:var(--white);padding:7px 13px;color:var(--ink)}
+button:hover:not(:disabled){background:var(--gray);border-color:#d8dbe0}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--purple);border-color:var(--purple);color:#fff;font-weight:600}
+.btn-primary:hover:not(:disabled){background:var(--purple-dark);border-color:var(--purple-dark)}
+.btn-yes{background:var(--white);border-color:var(--green-line);color:var(--green);font-weight:600}
+.btn-yes:hover:not(:disabled){background:var(--green-soft)}
+.btn-no{background:var(--white);border-color:var(--line);color:var(--ink2)}
+.btn-no:hover:not(:disabled){background:var(--gray);color:var(--red);border-color:var(--red-line)}
+.btn-quiet{background:transparent;border-color:transparent;color:var(--purple);padding:5px 8px}
+.btn-quiet:hover:not(:disabled){background:var(--purple-soft);border-color:transparent}
+
+input,select,textarea{font:inherit;padding:8px 11px;border:1px solid var(--line);
+  border-radius:7px;background:var(--white);color:var(--ink);width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--purple-line);outline-offset:0;border-color:var(--purple)}
+textarea{resize:vertical;line-height:1.6}
+a{color:var(--purple)}
 .hide{display:none !important}
 
-header{background:var(--panel);border-bottom:1px solid var(--line);padding:11px 18px;
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
-.logo{width:26px;height:26px;border-radius:6px;background:var(--brand);color:#fff;
-  display:grid;place-items:center;font-weight:700;font-size:12px}
-.title{font-weight:700}
-.tag{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
-  background:var(--warn-bg);color:var(--warn);border:1px solid #f0dcae;
-  padding:2px 7px;border-radius:20px}
-.spacer{flex:1}
-.who{color:var(--muted);font-size:12.5px}
+/* ---------- header ---------- */
+header{background:var(--white);border-bottom:1px solid var(--line);
+  padding:12px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:30}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--purple);color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:12px;letter-spacing:.02em}
+.h-title{font-weight:650;font-size:16px}
+.badge-int{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--purple-soft);color:var(--purple);border:1px solid var(--purple-line);
+  padding:3px 8px;border-radius:20px}
+.grow{flex:1}
+.h-who{color:var(--ink2);font-size:13px}
 
-.wrap{max-width:1400px;margin:0 auto;padding:16px 18px 60px}
-.grid{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
-@media (max-width:1000px){.grid{grid-template-columns:1fr}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
-.card h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-.card + .card{margin-top:14px}
+/* ---------- layout ---------- */
+.page{max-width:1060px;margin:0 auto;padding:22px 22px 80px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:var(--r);
+  margin-bottom:16px;overflow:hidden}
+.card-h{padding:15px 18px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.card-h.bordered{border-bottom:1px solid var(--line)}
+.step{width:23px;height:23px;border-radius:50%;background:var(--purple-soft);
+  color:var(--purple);border:1px solid var(--purple-line);
+  display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.card-t{font-weight:650;font-size:15px}
+.card-s{color:var(--ink2);font-size:13.5px;width:100%;margin-top:-2px}
+.card-b{padding:16px 18px}
+.card-b.flush{padding:0}
 
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px}
-.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px}
-.tile .n{font-size:22px;font-weight:700;line-height:1.1}
-.tile .l{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:3px}
+/* ---------- summary ---------- */
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+@media (max-width:640px){.sum{grid-template-columns:1fr}}
+.s-box{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px}
+.s-box.active{border-color:var(--purple);box-shadow:0 0 0 3px var(--purple-soft)}
+.s-n{font-size:27px;font-weight:700;line-height:1.05;letter-spacing:-.02em}
+.s-l{font-size:13px;color:var(--ink2);margin-top:4px}
 
-.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
-.chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:4px 12px;font-size:13px}
-.chip.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
-.chip .c{opacity:.65;margin-left:5px;font-variant-numeric:tabular-nums}
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:2px;padding:4px;background:var(--gray);border-radius:9px;
+  border:1px solid var(--line);width:fit-content;max-width:100%;overflow:auto}
+.tab{border:none;background:transparent;padding:7px 15px;border-radius:7px;
+  color:var(--ink2);font-weight:550;white-space:nowrap}
+.tab:hover:not(.on){background:#eef0f3;border-color:transparent}
+.tab.on{background:var(--white);color:var(--purple);font-weight:650;
+  box-shadow:0 1px 2px rgba(17,24,39,.07)}
+.tab .n{opacity:.6;margin-left:5px;font-variant-numeric:tabular-nums;font-weight:500}
 
-table{width:100%;border-collapse:collapse;background:var(--panel)}
-th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
-  background:#fafbfc;position:sticky;top:49px;z-index:5}
-tbody tr:hover{background:#fafbfc}
-tbody tr.sel{background:#eaf2fb}
-td.nm{font-weight:600}
-.sub{color:var(--muted);font-size:12.5px}
-.reason{color:var(--muted);font-size:12px;font-style:italic}
+/* ---------- people list ---------- */
+.grp{padding:11px 18px;background:var(--gray);border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.grp:first-child{border-top:none}
+.grp-t{font-weight:650;font-size:13.5px}
+.grp-c{color:var(--ink2);font-size:13px}
+.grp .grow{flex:1}
 
-.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
-  border:1px solid transparent;white-space:nowrap}
-.f-partner_agency{background:var(--partner-bg);color:var(--partner);border-color:#e0d3f2}
-.f-b2b{background:var(--b2b-bg);color:var(--b2b);border-color:#cfe0f5}
-.f-membership{background:var(--member-bg);color:var(--member);border-color:#c9e8e1}
-.f-review{background:var(--warn-bg);color:var(--warn);border-color:#f0dcae}
-.f-exclude{background:#f1f2f4;color:var(--muted);border-color:#e3e6ea}
-.s-approved{background:var(--good-bg);color:var(--good);border-color:#c4e5d4}
-.s-pushed{background:var(--b2b-bg);color:var(--b2b);border-color:#cfe0f5}
-.s-rejected,.s-already_in_outreach,.s-push_failed{background:var(--bad-bg);color:var(--bad);border-color:#f0c9c5}
-.deg{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
-.deg.first{color:var(--good);border-color:#c4e5d4;background:var(--good-bg);font-weight:700}
+.person{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;gap:13px;align-items:flex-start}
+.person:last-child{border-bottom:none}
+.person:hover{background:#fcfcfd}
+.av{width:36px;height:36px;border-radius:50%;background:var(--purple-soft);color:var(--purple);
+  display:grid;place-items:center;font-weight:650;font-size:14px;flex:none;
+  border:1px solid var(--purple-line)}
+.p-main{flex:1;min-width:0}
+.p-name{font-weight:650;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.p-role{color:var(--ink2);font-size:13.5px;margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-why{font-size:13px;color:var(--ink2);margin-top:5px}
+.p-why b{color:var(--ink);font-weight:600}
+.p-act{display:flex;gap:7px;align-items:center;flex:none}
+@media (max-width:700px){
+  .person{flex-wrap:wrap}
+  .p-act{width:100%;padding-left:49px}
+}
 
-.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);
-  border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px}
-.bar .n{font-weight:700}
+.tick{width:16px;height:16px;accent-color:var(--purple);flex:none;margin-top:10px}
 
-.row{display:flex;gap:8px;align-items:center}
-.row + .row{margin-top:9px}
-label.fld{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
-.note{font-size:12.5px;color:var(--muted);margin-top:8px}
-.err{background:var(--bad-bg);border:1px solid #f0c9c5;color:var(--bad);
-  padding:9px 11px;border-radius:6px;font-size:13px;margin-bottom:12px}
-.ok{background:var(--good-bg);border:1px solid #c4e5d4;color:var(--good);
-  padding:9px 11px;border-radius:6px;font-size:13px;margin-bottom:12px}
+.mini{font-size:11px;font-weight:650;padding:2px 7px;border-radius:20px;border:1px solid transparent;
+  white-space:nowrap}
+.m-conn{background:var(--green-soft);color:var(--green);border-color:var(--green-line)}
+.m-inv{background:var(--gray);color:var(--ink2);border-color:var(--line)}
+.m-done{background:var(--purple-soft);color:var(--purple);border-color:var(--purple-line)}
+.m-copy{background:var(--green-soft);color:var(--green);border-color:var(--green-line)}
+.m-nocopy{background:var(--amber-soft);color:var(--amber);border-color:var(--amber-line)}
 
-dialog{border:1px solid var(--line);border-radius:12px;padding:0;max-width:720px;width:94vw;
-  box-shadow:0 18px 50px rgba(0,0,0,.18)}
-dialog::backdrop{background:rgba(15,20,28,.45)}
-.dlg-h{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
-.dlg-h strong{flex:1}
-.dlg-b{padding:16px;max-height:70vh;overflow:auto}
-.dlg-f{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+.empty{padding:44px 20px;text-align:center;color:var(--ink2)}
+.empty-t{font-weight:650;color:var(--ink);margin-bottom:5px}
 
-#login{max-width:420px;margin:14vh auto;text-align:center}
-#boot{text-align:center;padding:16vh 0;color:var(--muted)}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.bulk{padding:11px 18px;border-bottom:1px solid var(--line);display:flex;
+  align-items:center;gap:10px;flex-wrap:wrap;background:var(--purple-soft)}
+.bulk b{font-weight:650}
+
+.flash{padding:11px 14px;border-radius:8px;font-size:14px;margin-bottom:16px}
+.flash.ok{background:var(--green-soft);border:1px solid var(--green-line);color:#065f46}
+.flash.err{background:var(--red-soft);border:1px solid var(--red-line);color:#991b1b}
+
+.hint{font-size:13px;color:var(--ink2);margin-top:9px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+label.f{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+details summary{cursor:pointer;color:var(--purple);font-size:13.5px;font-weight:600}
+details[open] summary{margin-bottom:10px}
+
+dialog{border:1px solid var(--line);border-radius:13px;padding:0;max-width:680px;width:94vw;
+  box-shadow:0 20px 55px rgba(17,24,39,.2)}
+dialog::backdrop{background:rgba(17,24,39,.42)}
+.d-h{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.d-h strong{flex:1;font-size:16px}
+.d-b{padding:18px;max-height:68vh;overflow:auto}
+.d-f{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:9px;
+  justify-content:flex-end;background:var(--gray)}
+
+#boot,#login,#denied{max-width:430px;margin:15vh auto;padding:0 20px}
+#boot{text-align:center;color:var(--ink2)}
+.auth{background:var(--white);border:1px solid var(--line);border-radius:var(--r);
+  padding:26px;text-align:center}
+.auth h1{font-size:19px;margin:12px 0 6px}
+.auth p{color:var(--ink2);font-size:14px;margin:0 0 16px}
 </style>
 </head>
 <body>
@@ -112,449 +163,464 @@ dialog::backdrop{background:rgba(15,20,28,.45)}
 <div id="boot">Loading…</div>
 
 <div id="login" class="hide">
-  <div class="card">
-    <div class="logo" style="margin:0 auto 12px">OE</div>
-    <h2 style="letter-spacing:0">Outreach Engine</h2>
-    <p class="sub">Internal tool. Sign in with your work email — you'll get a login link.</p>
+  <div class="auth">
+    <div class="mark" style="margin:0 auto">OE</div>
+    <h1>Outreach Engine</h1>
+    <p>Internal tool. Enter your work email and we'll send you a sign-in link.</p>
     <div id="login-msg"></div>
-    <div class="row" style="margin-top:10px">
-      <input id="email" type="email" placeholder="you@edbound.ai" autocomplete="email">
-      <button class="primary" id="send-link" style="white-space:nowrap">Send link</button>
+    <div class="row" style="margin-top:12px">
+      <input id="email" type="email" placeholder="you@edbound.ai" autocomplete="email" style="flex:1">
+      <button class="btn-primary" id="send-link">Send link</button>
     </div>
   </div>
 </div>
 
 <div id="denied" class="hide">
-  <div class="card" style="max-width:460px;margin:14vh auto;text-align:center">
-    <h2 style="letter-spacing:0">No access</h2>
-    <p class="sub">This tool is internal. Your account isn't on the list.</p>
-    <p class="sub mono" id="denied-email"></p>
+  <div class="auth">
+    <h1>No access</h1>
+    <p>This tool is internal. Your account isn't on the list.</p>
+    <p class="mono" id="denied-email"></p>
     <button id="denied-out">Sign out</button>
   </div>
 </div>
 
 <div id="app" class="hide">
 <header>
-  <div class="logo">OE</div>
-  <div class="title">Outreach Engine</div>
-  <span class="tag">Internal</span>
-  <div class="spacer"></div>
-  <span class="who" id="who"></span>
-  <button id="tpl-btn">Templates</button>
+  <div class="mark">OE</div>
+  <div class="h-title">Outreach Engine</div>
+  <span class="badge-int">Internal</span>
+  <div class="grow"></div>
+  <span class="h-who" id="who"></span>
+  <button class="btn-quiet" id="tpl-btn">Message templates</button>
   <button id="refresh">Refresh</button>
   <button id="logout">Sign out</button>
 </header>
 
-<div class="wrap">
+<div class="page">
   <div id="msg"></div>
 
-  <div class="tiles" id="tiles"></div>
+  <div class="sum" id="sum"></div>
 
-  <div class="grid">
-    <div>
-      <div class="card">
-        <h2>Pull post engagers</h2>
-        <label class="fld" for="kl">Konnector post list</label>
-        <select id="kl"><option value="">Loading…</option></select>
-        <div class="note" id="kl-note">Only <span class="mono">post_detail</span> lists appear — these are people who liked or commented on a post.</div>
-        <button class="primary" id="pull" style="width:100%;margin-top:10px">Pull into queue</button>
-        <div class="note">Nothing is sent. Leads land in the queue for your review.</div>
+  <!-- STEP 1 -->
+  <div class="card">
+    <div class="card-h">
+      <div class="step">1</div>
+      <div class="card-t">Bring in people who engaged with a post</div>
+      <div class="card-s">Pick a post. We'll load everyone who liked or commented on it, and skip anyone we're already talking to.</div>
+    </div>
+    <div class="card-b">
+      <div class="row">
+        <select id="kl" style="flex:1;min-width:240px"><option value="">Loading posts…</option></select>
+        <button class="btn-primary" id="pull">Load these people</button>
       </div>
+      <div class="hint" id="kl-note">Nothing is sent to anyone. They just land in the list below for you to go through.</div>
+    </div>
+  </div>
 
-      <div class="card">
-        <h2>Batches</h2>
-        <div id="batches" class="sub">—</div>
-      </div>
-
-      <div class="card">
-        <h2>How this works</h2>
-        <ol class="sub" style="padding-left:18px;margin:0">
-          <li>Konnector scrapes a post's engagers.</li>
-          <li>Pull them here. Anyone already in an outreach campaign is blocked automatically.</li>
-          <li>Each is scored Partner / B2B / Membership, with the matching rule shown.</li>
-          <li>You approve, edit copy, then push to a Konnector campaign.</li>
-        </ol>
-      </div>
+  <!-- STEP 2 -->
+  <div class="card">
+    <div class="card-h bordered">
+      <div class="step">2</div>
+      <div class="card-t">Decide who's worth talking to</div>
+      <div class="grow"></div>
+      <div class="tabs" id="tabs"></div>
     </div>
 
-    <div>
-      <div class="chips" id="fit-chips"></div>
-      <div class="chips" id="status-chips"></div>
+    <div class="bulk hide" id="bulk">
+      <b id="bulk-n">0 selected</b>
+      <div class="grow"></div>
+      <select id="refit" style="width:auto">
+        <option value="">Change group to…</option>
+        <option value="partner_agency">Could be a partner</option>
+        <option value="b2b">Could be a customer</option>
+        <option value="membership">Association / member body</option>
+        <option value="exclude">Not a fit</option>
+      </select>
+      <button class="btn-no" id="rej-btn">Skip these</button>
+      <button class="btn-yes" id="app-btn">Approve these</button>
+    </div>
 
-      <div class="bar">
-        <label class="row" style="gap:6px"><input type="checkbox" id="all" style="width:auto"> <span>Select all</span></label>
-        <span class="n" id="selc">0 selected</span>
-        <div class="spacer"></div>
-        <button id="draft-btn">Draft copy</button>
-        <select id="refit" style="width:auto">
-          <option value="">Re-file as…</option>
-          <option value="partner_agency">Partner / Agency</option>
-          <option value="b2b">B2B company</option>
-          <option value="membership">Membership body</option>
-          <option value="exclude">Exclude</option>
-        </select>
-        <button class="danger" id="rej-btn">Reject</button>
-        <button class="primary" id="app-btn">Approve</button>
-      </div>
+    <div class="card-b flush" id="people"></div>
+  </div>
 
-      <div style="overflow:auto;border:1px solid var(--line);border-radius:var(--radius)">
-        <table>
-          <thead><tr>
-            <th style="width:28px"></th><th>Person</th><th>Fit</th><th>Why</th><th>Status</th><th style="width:70px">Copy</th>
-          </tr></thead>
-          <tbody id="rows"><tr><td colspan="6" class="sub" style="padding:22px;text-align:center">Loading…</td></tr></tbody>
-        </table>
+  <!-- STEP 3 -->
+  <div class="card" id="step3">
+    <div class="card-h bordered">
+      <div class="step">3</div>
+      <div class="card-t">Write their messages</div>
+      <div class="card-s">Each person gets their own invite note and first message, using their name and company. Edit anyone individually.</div>
+    </div>
+    <div class="card-b">
+      <div class="row">
+        <button class="btn-primary" id="draft-all">Write messages for approved people</button>
+        <span class="hint" style="margin:0" id="draft-state"></span>
       </div>
-      <div class="note" id="shown"></div>
+      <details style="margin-top:14px">
+        <summary>How this works</summary>
+        <ol style="color:var(--ink2);font-size:13.5px;padding-left:20px;margin:0">
+          <li>Everyone you approve gets copy written from the template for their group.</li>
+          <li>Their first name and company are filled in automatically.</li>
+          <li>Open anyone to reword their message before it goes anywhere.</li>
+          <li>Once you're happy, the approved list gets pushed into a campaign.</li>
+        </ol>
+      </details>
     </div>
   </div>
 </div>
 </div>
 
 <dialog id="lead-dlg">
-  <div class="dlg-h"><strong id="ld-name">Lead</strong><button id="ld-x">Close</button></div>
-  <div class="dlg-b">
-    <div class="sub" id="ld-meta" style="margin-bottom:12px"></div>
-    <div id="ld-about" class="sub" style="margin-bottom:14px"></div>
-    <label class="fld">Connection note (max 290 chars, sent with the invite)</label>
+  <div class="d-h"><strong id="ld-name">Person</strong><button id="ld-x">Close</button></div>
+  <div class="d-b">
+    <div class="hint" id="ld-meta" style="margin:0 0 14px"></div>
+    <div class="hint" id="ld-about" style="margin:0 0 16px"></div>
+    <label class="f">Invite note <span style="color:var(--ink2);font-weight:400">— sent with the connection request</span></label>
     <textarea id="ld-note" rows="3"></textarea>
-    <div class="note" id="ld-count"></div>
-    <label class="fld" style="margin-top:12px">First message (sent after they accept)</label>
+    <div class="hint" id="ld-count"></div>
+    <label class="f" style="margin-top:16px">First message <span style="color:var(--ink2);font-weight:400">— sent after they accept</span></label>
     <textarea id="ld-msg" rows="8"></textarea>
   </div>
-  <div class="dlg-f"><button id="ld-cancel">Cancel</button><button class="primary" id="ld-save">Save copy</button></div>
+  <div class="d-f"><button id="ld-cancel">Cancel</button><button class="btn-primary" id="ld-save">Save</button></div>
 </dialog>
 
 <dialog id="tpl-dlg">
-  <div class="dlg-h"><strong>Message templates</strong><button id="tp-x">Close</button></div>
-  <div class="dlg-b">
-    <p class="sub">One template per bucket. Placeholders: <span class="mono">{{first_name}}</span>
-      <span class="mono">{{company_name}}</span> <span class="mono">{{occupation}}</span>.
-      They are filled in per person when you draft copy.</p>
-    <div class="row"><select id="tp-fit" style="width:auto">
-      <option value="partner_agency">Partner / Agency</option>
-      <option value="b2b">B2B company</option>
-      <option value="membership">Membership body</option>
-    </select></div>
-    <label class="fld" style="margin-top:12px">Connection note</label>
+  <div class="d-h"><strong>Message templates</strong><button id="tp-x">Close</button></div>
+  <div class="d-b">
+    <p class="hint" style="margin:0 0 14px">One template per group. Write <span class="mono">{{first_name}}</span> or
+      <span class="mono">{{company_name}}</span> and we'll fill them in per person.</p>
+    <label class="f">Group</label>
+    <select id="tp-fit">
+      <option value="partner_agency">Could be a partner</option>
+      <option value="b2b">Could be a customer</option>
+      <option value="membership">Association / member body</option>
+    </select>
+    <label class="f" style="margin-top:16px">Invite note</label>
     <textarea id="tp-note" rows="3"></textarea>
-    <label class="fld" style="margin-top:12px">First message</label>
+    <label class="f" style="margin-top:16px">First message</label>
     <textarea id="tp-msg" rows="9"></textarea>
-    <div class="note" id="tp-note2"></div>
+    <div class="hint" id="tp-note2"></div>
   </div>
-  <div class="dlg-f"><button id="tp-cancel">Cancel</button><button class="primary" id="tp-save">Save template</button></div>
+  <div class="d-f"><button id="tp-cancel">Cancel</button><button class="btn-primary" id="tp-save">Save template</button></div>
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 const PROJECT_REF = 'qypevxpscdhdrzlelolt';
 const SUPABASE_URL = 'https://' + PROJECT_REF + '.supabase.co';
-// Anon key is public by design — it grants nothing on its own (every table is RLS-on with no
-// policies, and the API authenticates the signed-in user server-side).
+// Anon key is public by design — it grants nothing alone (every table is RLS-on with no
+// policies; the API authorises the signed-in user server-side).
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cGV2eHBzY2RoZHJ6bGVsb2x0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MDE0NjYsImV4cCI6MjEwMDk3NzQ2Nn0.DsagYyW2kbvWOtBt-XUh8ube4YbFc2snbROLCIBxs5Y';
 const API = SUPABASE_URL + '/functions/v1/engage';
 
-const FIT_LABEL = {
-  partner_agency:'Partner / Agency', b2b:'B2B company', membership:'Membership body',
-  review:'Needs a look', exclude:'Excluded', unclassified:'Unclassified'
+// Plain-language names. The machine words stay in the database.
+const GROUP = {
+  partner_agency:'Could be a partner',
+  b2b:'Could be a customer',
+  membership:'Association / member body',
+  review:"Not sure — you decide",
+  exclude:'Not a fit'
 };
-const STATUS_LABEL = {
-  classified:'New', approved:'Approved', rejected:'Rejected', pushed:'Pushed',
-  already_in_outreach:'Already in outreach', push_failed:'Push failed'
-};
+const GROUP_ORDER = ['partner_agency','b2b','membership','review'];
 
 const sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-let state = { fit:null, status:null, batch:null, leads:[], counts:{}, sel:new Set(),
-              viewer:null, templates:{}, postLists:[] };
+let S = { tab:'review', leads:[], counts:{}, sel:new Set(), viewer:null, templates:{}, postLists:[] };
 
-function show(view){
-  for (const v of ['boot','login','denied','app']) $(v).classList.toggle('hide', v !== view);
-}
-function flash(text, kind){
-  $('msg').innerHTML = text ? `<div class="${kind === 'err' ? 'err' : 'ok'}">${esc(text)}</div>` : '';
-  if (text) setTimeout(() => { $('msg').innerHTML = ''; }, 6000);
+function show(v){ for (const x of ['boot','login','denied','app']) $(x).classList.toggle('hide', x !== v); }
+function flash(t, kind){
+  $('msg').innerHTML = t ? `<div class="flash ${kind}">${esc(t)}</div>` : '';
+  if (t) setTimeout(() => { $('msg').innerHTML = ''; }, 7000);
 }
 
-async function token(){
-  const { data } = await sb.auth.getSession();
-  return data?.session?.access_token ?? null;
-}
+async function token(){ const { data } = await sb.auth.getSession(); return data?.session?.access_token ?? null; }
 
 async function api(path, opts = {}){
   const t = await token();
   if (!t) { show('login'); throw new Error('no session'); }
-  const res = await fetch(API + path, {
-    ...opts,
-    headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', ...(opts.headers || {}) }
-  });
-  let body = null;
-  try { body = await res.json(); } catch (_) {}
-  if (res.status === 401) { show('login'); throw new Error('unauthorised'); }
-  if (res.status === 403) {
-    $('denied-email').textContent = state.viewer?.email ?? '';
-    show('denied'); throw new Error('forbidden');
-  }
-  if (!res.ok || body?.ok === false) {
-    throw new Error(body?.error ? body.error + (body.detail ? ': ' + body.detail : '') : 'HTTP ' + res.status);
-  }
-  return body;
+  const res = await fetch(API + path, { ...opts,
+    headers:{ Authorization:'Bearer ' + t, 'Content-Type':'application/json', ...(opts.headers || {}) } });
+  let b = null; try { b = await res.json(); } catch (_) {}
+  if (res.status === 401) { show('login'); throw new Error('no session'); }
+  if (res.status === 403) { $('denied-email').textContent = S.viewer?.email ?? ''; show('denied'); throw new Error('forbidden'); }
+  if (!res.ok || b?.ok === false) throw new Error(b?.error ? b.error + (b.detail ? ': ' + b.detail : '') : 'HTTP ' + res.status);
+  return b;
 }
 
-// ---------------------------------------------------------------- rendering
+// Turn rule output into something a human reads without thinking.
+function why(l){
+  const r = l.fit_reason || '';
+  let m;
+  if (r.includes('already in an active outreach')) return `Already in one of our campaigns`;
+  if (r.startsWith('own team')) return `One of our own team`;
+  if (r === 'no rule matched' || r === 'no keyword matched') return `Couldn't tell from their profile — worth a quick look`;
+  if ((m = r.match(/^headline matched "(.+)"$/))) return `Their headline mentions <b>${esc(m[1])}</b>`;
+  if ((m = r.match(/^company matched "(.+)"$/))) return `They work at <b>${esc(l.company || m[1])}</b>`;
+  if ((m = r.match(/^title matched "(.+)"$/))) return `Their title says <b>${esc(m[1])}</b>`;
+  if ((m = r.match(/^title "(.+)" but employer matches/))) return `Title says <b>${esc(m[1])}</b>, but they work at a real company — your call`;
+  if ((m = r.match(/^member body "(.+)" outranks/))) return `Works at a member body`;
+  if (r.startsWith('set to ')) return `You moved them here`;
+  return esc(r);
+}
 
-function tiles(c){
-  const f = c.by_fit || {}, s = c.by_status || {}, d = c.by_degree || {};
-  const t = [
-    ['Total pulled', c.total ?? 0],
-    ['Worth contacting', c.actionable ?? 0],
-    ['Approved', s.approved ?? 0],
-    ['Already in outreach', s.already_in_outreach ?? 0],
-    ['1st-degree', d['1st'] ?? 0],
-    ['Needs a look', f.review ?? 0],
+function bucketOf(l){
+  if (['approved','pushed','push_failed'].includes(l.status)) return 'approved';
+  if (['rejected','already_in_outreach'].includes(l.status) || l.fit === 'exclude') return 'skipped';
+  return 'review';
+}
+
+// ---------------------------------------------------------------- render
+
+function summary(){
+  const n = { review:0, approved:0, skipped:0 };
+  for (const l of S.leads) n[bucketOf(l)]++;
+  const boxes = [
+    ['review','To go through', n.review],
+    ['approved','Approved', n.approved],
+    ['skipped','Skipped', n.skipped],
   ];
-  $('tiles').innerHTML = t.map(([l, n]) =>
-    `<div class="tile"><div class="n">${n}</div><div class="l">${esc(l)}</div></div>`).join('');
+  $('sum').innerHTML = boxes.map(([k, label, v]) =>
+    `<button class="s-box ${S.tab === k ? 'active' : ''}" data-tab="${k}" style="text-align:left;cursor:pointer">
+       <div class="s-n">${v}</div><div class="s-l">${esc(label)}</div></button>`).join('');
+  $('tabs').innerHTML = boxes.map(([k, label, v]) =>
+    `<button class="tab ${S.tab === k ? 'on' : ''}" data-tab="${k}">${esc(label)}<span class="n">${v}</span></button>`).join('');
 }
 
-function chips(){
-  const f = state.counts.by_fit || {}, s = state.counts.by_status || {};
-  const order = ['partner_agency','b2b','membership','review','exclude'];
-  $('fit-chips').innerHTML =
-    `<button class="chip ${state.fit === null ? 'on' : ''}" data-fit="">All fits<span class="c">${state.counts.total ?? 0}</span></button>` +
-    order.filter(k => f[k]).map(k =>
-      `<button class="chip ${state.fit === k ? 'on' : ''}" data-fit="${k}">${esc(FIT_LABEL[k] || k)}<span class="c">${f[k]}</span></button>`).join('');
-  const sOrder = ['classified','approved','rejected','pushed','already_in_outreach','push_failed'];
-  $('status-chips').innerHTML =
-    `<button class="chip ${state.status === null ? 'on' : ''}" data-st="">Any status</button>` +
-    sOrder.filter(k => s[k]).map(k =>
-      `<button class="chip ${state.status === k ? 'on' : ''}" data-st="${k}">${esc(STATUS_LABEL[k] || k)}<span class="c">${s[k]}</span></button>`).join('');
+function personRow(l, showTick){
+  const initial = esc((l.name || '?').trim().charAt(0).toUpperCase());
+  const conn = l.is_connection
+    ? `<span class="mini m-conn">Already connected</span>`
+    : `<span class="mini m-inv">Needs an invite</span>`;
+  const copy = ['approved','pushed'].includes(l.status)
+    ? (l.connect_note && l.first_message
+        ? `<span class="mini m-copy">Message ready</span>`
+        : `<span class="mini m-nocopy">No message yet</span>`)
+    : '';
+  const pushed = l.status === 'pushed' ? `<span class="mini m-done">In campaign</span>` : '';
+  const role = [l.occupation, l.company].filter(Boolean).join(' · ');
+  const acts = S.tab === 'review'
+    ? `<button class="btn-no" data-no="${l.id}">Skip</button>
+       <button class="btn-yes" data-yes="${l.id}">Approve</button>`
+    : `<button data-edit="${l.id}">${l.connect_note ? 'Edit message' : 'Write message'}</button>`;
+  return `<div class="person">
+    ${showTick ? `<input type="checkbox" class="tick" data-id="${l.id}" ${S.sel.has(l.id) ? 'checked' : ''}>` : ''}
+    <div class="av">${initial}</div>
+    <div class="p-main">
+      <div class="p-name">${esc(l.name || 'Unknown')} ${conn} ${copy} ${pushed}</div>
+      <div class="p-role" title="${esc(role)}">${esc(role || '—')}</div>
+      <div class="p-why">${why(l)}${l.profile_url ? ` · <a href="${esc(l.profile_url)}" target="_blank" rel="noopener noreferrer">see profile</a>` : ''}</div>
+    </div>
+    <div class="p-act">${acts}</div>
+  </div>`;
 }
 
-function rows(){
-  const list = state.leads;
+function people(){
+  const list = S.leads.filter(l => bucketOf(l) === S.tab);
   if (!list.length) {
-    $('rows').innerHTML = `<tr><td colspan="6" class="sub" style="padding:22px;text-align:center">Nothing here. Pull a post list to get started.</td></tr>`;
-    $('shown').textContent = '';
+    const txt = { review:['Nothing to go through', 'Load a post above and the people who engaged will show up here.'],
+                  approved:['No one approved yet', 'Approve people in the “To go through” tab first.'],
+                  skipped:['Nothing skipped', 'People you skip, and anyone already in a campaign, land here.'] }[S.tab];
+    $('people').innerHTML = `<div class="empty"><div class="empty-t">${esc(txt[0])}</div>${esc(txt[1])}</div>`;
+    $('bulk').classList.add('hide');
     return;
   }
-  $('rows').innerHTML = list.map(l => {
-    const deg = l.degree_connection
-      ? `<span class="deg ${l.is_connection ? 'first' : ''}">${esc(l.degree_connection)}</span>` : '';
-    const eng = l.engagement_type === 'comment' ? 'commented'
-              : l.engagement_type === 'like' ? 'reacted' : esc(l.engagement_type || '');
-    const hasCopy = l.connect_note && l.first_message;
-    return `<tr class="${state.sel.has(l.id) ? 'sel' : ''}" data-id="${l.id}">
-      <td><input type="checkbox" class="cb" data-id="${l.id}" style="width:auto" ${state.sel.has(l.id) ? 'checked' : ''}></td>
-      <td class="nm">${esc(l.name || '—')} ${deg}
-        <div class="sub">${esc(l.company || '')}${l.company && l.occupation ? ' · ' : ''}${esc((l.occupation || '').slice(0, 78))}</div>
-        <div class="sub">${eng}${l.profile_url ? ` · <a href="${esc(l.profile_url)}" target="_blank" rel="noopener noreferrer">profile</a>` : ''}</div>
-      </td>
-      <td><span class="pill f-${esc(l.fit)}">${esc(FIT_LABEL[l.fit] || l.fit)}</span></td>
-      <td class="reason">${esc(l.fit_reason || '')}</td>
-      <td><span class="pill s-${esc(l.status)}">${esc(STATUS_LABEL[l.status] || l.status)}</span></td>
-      <td><button data-edit="${l.id}">${hasCopy ? 'Edit' : 'Write'}</button></td>
-    </tr>`;
-  }).join('');
-  $('shown').textContent = `Showing ${list.length} of ${state.counts.total ?? list.length}.`;
-  selCount();
+
+  if (S.tab === 'review') {
+    // group by fit so each block is one kind of person
+    const groups = GROUP_ORDER.filter(g => list.some(l => l.fit === g));
+    $('people').innerHTML = groups.map(g => {
+      const rows = list.filter(l => l.fit === g);
+      return `<div class="grp">
+          <div class="grp-t">${esc(GROUP[g])}</div>
+          <div class="grp-c">${rows.length} ${rows.length === 1 ? 'person' : 'people'}</div>
+          <div class="grow"></div>
+          <button class="btn-quiet" data-selgrp="${g}">Select all</button>
+        </div>` + rows.map(l => personRow(l, true)).join('');
+    }).join('');
+  } else {
+    $('people').innerHTML = list.map(l => personRow(l, false)).join('');
+  }
+  bulk();
 }
 
-function selCount(){
-  $('selc').textContent = `${state.sel.size} selected`;
-  const none = state.sel.size === 0;
-  for (const b of ['app-btn','rej-btn','draft-btn']) $(b).disabled = none;
-  $('refit').disabled = none;
+function bulk(){
+  const n = S.sel.size;
+  $('bulk').classList.toggle('hide', n === 0 || S.tab !== 'review');
+  $('bulk-n').textContent = `${n} selected`;
+}
+
+function draftState(){
+  const appr = S.leads.filter(l => bucketOf(l) === 'approved');
+  const ready = appr.filter(l => l.connect_note && l.first_message).length;
+  $('draft-all').disabled = appr.length === 0;
+  $('draft-state').textContent = appr.length === 0
+    ? 'Approve some people first.'
+    : `${ready} of ${appr.length} approved ${appr.length === 1 ? 'person has' : 'people have'} a message ready.`;
 }
 
 // ---------------------------------------------------------------- data
 
 async function load(){
-  const q = new URLSearchParams({ limit:'300' });
-  if (state.fit) q.set('fit', state.fit);
-  if (state.status) q.set('status', state.status);
-  if (state.batch) q.set('batch_id', state.batch);
-  const d = await api('/api/list?' + q);
-  state.leads = d.leads || [];
-  state.counts = d.counts || {};
-  state.viewer = d.viewer || null;
-  state.sel = new Set([...state.sel].filter(id => state.leads.some(l => l.id === id)));
-  $('who').textContent = state.viewer ? state.viewer.email + (state.viewer.is_admin ? ' · admin' : '') : '';
-  tiles(state.counts); chips(); rows(); batches(d.batches || []);
-}
-
-function batches(list){
-  if (!list.length) { $('batches').textContent = 'No pulls yet.'; return; }
-  $('batches').innerHTML = list.slice(0, 12).map(b => {
-    const on = state.batch === b.id;
-    return `<div style="margin-bottom:7px">
-      <button class="chip ${on ? 'on' : ''}" data-batch="${b.id}" style="text-align:left;max-width:100%">
-        ${esc((b.label || 'batch').slice(0, 40))}</button>
-      <div class="sub">${new Date(b.created_at).toLocaleString()} · ${esc(b.created_by || '')}</div>
-    </div>`;
-  }).join('') + (state.batch ? `<button data-batch="" style="margin-top:4px">Clear batch filter</button>` : '');
+  const d = await api('/api/list?limit=300');
+  S.leads = d.leads || []; S.counts = d.counts || {}; S.viewer = d.viewer || null;
+  S.sel = new Set([...S.sel].filter(id => S.leads.some(l => l.id === id)));
+  $('who').textContent = S.viewer ? S.viewer.email : '';
+  summary(); people(); draftState();
 }
 
 async function loadPostLists(){
   try {
     const d = await api('/api/kn/lists');
-    state.postLists = d.post_lists || [];
-    if (!state.postLists.length) {
-      $('kl').innerHTML = '<option value="">No post lists found</option>';
-      $('kl-note').textContent = 'No post_detail lists in Konnector yet. Scrape a post’s engagers there first.';
+    S.postLists = d.post_lists || [];
+    if (!S.postLists.length) {
+      $('kl').innerHTML = '<option value="">No posts found</option>';
+      $('kl-note').textContent = 'No post engagement lists yet. Scrape a post’s engagers in Konnector first, then come back.';
       return;
     }
-    $('kl').innerHTML = state.postLists.map(l =>
-      `<option value="${esc(l.id)}">${esc((l.name || 'list').slice(0, 44))} — ${l.engagers ?? '?'} engagers</option>`).join('');
+    $('kl').innerHTML = S.postLists.map(l => {
+      const n = l.engagers ?? '?';
+      return `<option value="${esc(l.id)}">${esc((l.name || 'post').slice(0, 46))} — ${n} ${n === 1 ? 'person' : 'people'}</option>`;
+    }).join('');
   } catch (e) {
-    $('kl').innerHTML = '<option value="">Could not load</option>';
-    $('kl-note').textContent = 'Konnector list lookup failed: ' + e.message;
+    $('kl').innerHTML = '<option value="">Could not load posts</option>';
+    $('kl-note').textContent = 'Could not reach the post list: ' + e.message;
   }
 }
 
 // ---------------------------------------------------------------- actions
 
-async function decide(action){
-  const ids = [...state.sel];
-  const fit = $('refit').value || undefined;
+async function decide(ids, action){
   if (!ids.length) return;
-  if (action === 'approve' && !confirm(
-    `Approve ${ids.length} lead${ids.length > 1 ? 's' : ''}?\n\nThis marks them ready to push. Nothing is sent yet.`)) return;
+  const fit = $('refit').value || undefined;
   try {
     const d = await api('/api/decide', { method:'POST', body:JSON.stringify({ ids, action, fit }) });
-    flash(`${action === 'approve' ? 'Approved' : 'Rejected'} ${d.affected}.` +
-      (d.affected < ids.length ? ` ${ids.length - d.affected} skipped (already in outreach).` : ''), 'ok');
-    $('refit').value = ''; state.sel.clear(); await load();
-  } catch (e) { flash(e.message, 'err'); }
-}
-
-async function autodraft(){
-  const ids = [...state.sel];
-  if (!ids.length) return;
-  try {
-    const d = await api('/api/autodraft', { method:'POST', body:JSON.stringify({ ids }) });
-    flash(`Drafted copy for ${d.drafted}.` +
-      (d.skipped_no_template_for_fit ? ` ${d.skipped_no_template_for_fit} skipped (no template for that bucket).` : ''), 'ok');
+    const verb = action === 'approve' ? 'Approved' : 'Skipped';
+    flash(`${verb} ${d.affected}.` +
+      (d.affected < ids.length ? ` ${ids.length - d.affected} left alone — already in a campaign.` : ''), 'ok');
+    $('refit').value = ''; ids.forEach(i => S.sel.delete(i));
     await load();
   } catch (e) { flash(e.message, 'err'); }
 }
 
-async function pull(){
-  const id = $('kl').value;
-  if (!id) { flash('Pick a post list first.', 'err'); return; }
-  const chosen = state.postLists.find(l => l.id === id);
-  $('pull').disabled = true; $('pull').textContent = 'Pulling…';
+async function draftAll(){
+  const ids = S.leads.filter(l => bucketOf(l) === 'approved').map(l => l.id);
+  if (!ids.length) return;
+  $('draft-all').disabled = true;
+  const label = $('draft-all').textContent;
+  $('draft-all').textContent = 'Writing…';
   try {
-    const d = await api('/api/kn/pull', { method:'POST', body:JSON.stringify({
-      lead_list_id:id, label:chosen?.name || 'Konnector post list', post_url:chosen?.post_url || null }) });
-    flash(`Pulled ${d.members_fetched}. Added ${d.inserted}, skipped ${d.skipped_duplicates} already known.`, 'ok');
-    state.batch = d.batch_id; state.fit = null; state.status = null; await load();
+    const d = await api('/api/autodraft', { method:'POST', body:JSON.stringify({ ids }) });
+    flash(`Wrote messages for ${d.drafted} ${d.drafted === 1 ? 'person' : 'people'}.`, 'ok');
+    await load();
   } catch (e) { flash(e.message, 'err'); }
-  finally { $('pull').disabled = false; $('pull').textContent = 'Pull into queue'; }
+  finally { $('draft-all').textContent = label; draftState(); }
 }
 
-// ---------------------------------------------------------------- lead editor
+async function pull(){
+  const id = $('kl').value;
+  if (!id) { flash('Pick a post first.', 'err'); return; }
+  const chosen = S.postLists.find(l => l.id === id);
+  $('pull').disabled = true; $('pull').textContent = 'Loading…';
+  try {
+    const d = await api('/api/kn/pull', { method:'POST', body:JSON.stringify({
+      lead_list_id:id, label:chosen?.name || 'post', post_url:chosen?.post_url || null }) });
+    flash(`Brought in ${d.inserted} new ${d.inserted === 1 ? 'person' : 'people'}` +
+      (d.skipped_duplicates ? `, skipped ${d.skipped_duplicates} we already had.` : '.'), 'ok');
+    S.tab = 'review'; await load();
+  } catch (e) { flash(e.message, 'err'); }
+  finally { $('pull').disabled = false; $('pull').textContent = 'Load these people'; }
+}
+
+// ---------------------------------------------------------------- editor
 
 let editing = null;
 function openLead(id){
-  const l = state.leads.find(x => x.id === id);
-  if (!l) return;
+  const l = S.leads.find(x => x.id === id); if (!l) return;
   editing = l;
-  $('ld-name').textContent = l.name || 'Lead';
+  $('ld-name').textContent = l.name || 'Person';
   $('ld-meta').innerHTML = [
-    l.occupation ? esc(l.occupation) : '', l.company ? '<strong>' + esc(l.company) + '</strong>' : '',
-    l.location ? esc(l.location) : '', l.degree_connection ? esc(l.degree_connection) + ' degree' : '',
-    `<span class="pill f-${esc(l.fit)}">${esc(FIT_LABEL[l.fit] || l.fit)}</span>`,
-    l.profile_url ? `<a href="${esc(l.profile_url)}" target="_blank" rel="noopener noreferrer">open profile</a>` : ''
+    l.occupation ? esc(l.occupation) : '',
+    l.company ? '<b>' + esc(l.company) + '</b>' : '',
+    l.location ? esc(l.location) : '',
+    l.is_connection ? 'Already connected' : 'Needs an invite',
+    l.profile_url ? `<a href="${esc(l.profile_url)}" target="_blank" rel="noopener noreferrer">see profile</a>` : ''
   ].filter(Boolean).join(' · ');
-  $('ld-about').innerHTML = l.about_snippet
-    ? `<em>From their profile:</em> ${esc(l.about_snippet)}` : '';
+  $('ld-about').innerHTML = l.about_snippet ? `<b>From their profile:</b> ${esc(l.about_snippet)}` : '';
   $('ld-note').value = l.connect_note || '';
   $('ld-msg').value = l.first_message || '';
-  noteCount();
-  $('lead-dlg').showModal();
+  count(); $('lead-dlg').showModal();
 }
-function noteCount(){
+function count(){
   const n = $('ld-note').value.length;
-  $('ld-count').textContent = `${n}/290 characters` + (n > 290 ? ' — will be trimmed' : '');
-  $('ld-count').style.color = n > 290 ? 'var(--bad)' : 'var(--muted)';
+  $('ld-count').textContent = n > 290
+    ? `${n} characters — LinkedIn only allows 290, so this will be trimmed`
+    : `${n} of 290 characters`;
+  $('ld-count').style.color = n > 290 ? 'var(--red)' : 'var(--ink2)';
 }
 async function saveLead(){
   if (!editing) return;
   try {
     await api('/api/draft', { method:'POST', body:JSON.stringify({
       id:editing.id, connect_note:$('ld-note').value, first_message:$('ld-msg').value }) });
-    $('lead-dlg').close(); flash('Copy saved.', 'ok'); await load();
+    $('lead-dlg').close(); flash('Saved.', 'ok'); await load();
   } catch (e) { flash(e.message, 'err'); }
 }
-
-// ---------------------------------------------------------------- templates
 
 async function openTemplates(){
   try {
     const d = await api('/api/templates');
-    state.templates = d.templates || {};
-    fillTemplate();
-    $('tp-note2').textContent = state.viewer?.is_admin ? '' : 'Only admins can save template changes.';
-    $('tp-save').disabled = !state.viewer?.is_admin;
+    S.templates = d.templates || {}; fillTpl();
+    $('tp-note2').textContent = S.viewer?.is_admin ? '' : 'Only admins can save template changes.';
+    $('tp-save').disabled = !S.viewer?.is_admin;
     $('tpl-dlg').showModal();
   } catch (e) { flash(e.message, 'err'); }
 }
-function fillTemplate(){
-  const t = state.templates[$('tp-fit').value] || { connect_note:'', first_message:'' };
+function fillTpl(){
+  const t = S.templates[$('tp-fit').value] || { connect_note:'', first_message:'' };
   $('tp-note').value = t.connect_note; $('tp-msg').value = t.first_message;
 }
-async function saveTemplate(){
+async function saveTpl(){
   try {
     const d = await api('/api/templates', { method:'POST', body:JSON.stringify({
       fit:$('tp-fit').value, connect_note:$('tp-note').value, first_message:$('tp-msg').value }) });
-    state.templates = d.templates || {};
-    flash('Template saved. Use “Draft copy” to apply it.', 'ok');
+    S.templates = d.templates || {};
+    flash('Template saved. Use step 3 to apply it.', 'ok');
   } catch (e) { flash(e.message, 'err'); }
 }
 
 // ---------------------------------------------------------------- events
 
-$('fit-chips').addEventListener('click', e => {
-  const b = e.target.closest('[data-fit]'); if (!b) return;
-  state.fit = b.dataset.fit || null; load().catch(x => flash(x.message, 'err'));
-});
-$('status-chips').addEventListener('click', e => {
-  const b = e.target.closest('[data-st]'); if (!b) return;
-  state.status = b.dataset.st || null; load().catch(x => flash(x.message, 'err'));
-});
-$('batches').addEventListener('click', e => {
-  const b = e.target.closest('[data-batch]'); if (!b) return;
-  state.batch = b.dataset.batch || null; load().catch(x => flash(x.message, 'err'));
-});
-$('rows').addEventListener('click', e => {
-  const cb = e.target.closest('.cb');
-  if (cb) {
-    cb.checked ? state.sel.add(cb.dataset.id) : state.sel.delete(cb.dataset.id);
-    cb.closest('tr').classList.toggle('sel', cb.checked);
-    selCount(); return;
+function switchTab(t){ S.tab = t; S.sel.clear(); summary(); people(); }
+$('sum').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) switchTab(b.dataset.tab); });
+$('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) switchTab(b.dataset.tab); });
+
+$('people').addEventListener('click', e => {
+  const t = e.target;
+  const tick = t.closest('.tick');
+  if (tick) { tick.checked ? S.sel.add(tick.dataset.id) : S.sel.delete(tick.dataset.id); bulk(); return; }
+  const grp = t.closest('[data-selgrp]');
+  if (grp) {
+    S.leads.filter(l => bucketOf(l) === 'review' && l.fit === grp.dataset.selgrp).forEach(l => S.sel.add(l.id));
+    people(); return;
   }
-  const ed = e.target.closest('[data-edit]');
-  if (ed) openLead(ed.dataset.edit);
+  const yes = t.closest('[data-yes]'); if (yes) return void decide([yes.dataset.yes], 'approve');
+  const no  = t.closest('[data-no]');  if (no)  return void decide([no.dataset.no], 'reject');
+  const ed  = t.closest('[data-edit]'); if (ed) openLead(ed.dataset.edit);
 });
-$('all').addEventListener('change', e => {
-  state.sel = e.target.checked ? new Set(state.leads.map(l => l.id)) : new Set();
-  rows();
-});
-$('app-btn').addEventListener('click', () => decide('approve'));
-$('rej-btn').addEventListener('click', () => decide('reject'));
-$('draft-btn').addEventListener('click', autodraft);
+
+$('app-btn').addEventListener('click', () => decide([...S.sel], 'approve'));
+$('rej-btn').addEventListener('click', () => decide([...S.sel], 'reject'));
+$('draft-all').addEventListener('click', draftAll);
 $('pull').addEventListener('click', pull);
 $('refresh').addEventListener('click', () => load().catch(e => flash(e.message, 'err')));
 $('tpl-btn').addEventListener('click', openTemplates);
-$('tp-fit').addEventListener('change', fillTemplate);
-$('tp-save').addEventListener('click', saveTemplate);
+$('tp-fit').addEventListener('change', fillTpl);
+$('tp-save').addEventListener('click', saveTpl);
 $('tp-cancel').addEventListener('click', () => $('tpl-dlg').close());
 $('tp-x').addEventListener('click', () => $('tpl-dlg').close());
-$('ld-note').addEventListener('input', noteCount);
+$('ld-note').addEventListener('input', count);
 $('ld-save').addEventListener('click', saveLead);
 $('ld-cancel').addEventListener('click', () => $('lead-dlg').close());
 $('ld-x').addEventListener('click', () => $('lead-dlg').close());
@@ -562,38 +628,24 @@ $('logout').addEventListener('click', async () => { await sb.auth.signOut(); loc
 $('denied-out').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
 
 $('send-link').addEventListener('click', async () => {
-  const email = $('email').value.trim();
-  if (!email) return;
+  const email = $('email').value.trim(); if (!email) return;
   $('send-link').disabled = true;
   try {
-    // emailRedirectTo MUST be explicit: without it GoTrue strips the path and the link
+    // emailRedirectTo must be explicit: without it GoTrue drops the path and the link
     // lands on the domain root instead of this app.
-    const { error } = await sb.auth.signInWithOtp({ email, options:{
-      emailRedirectTo: location.origin + location.pathname } });
+    const { error } = await sb.auth.signInWithOtp({ email,
+      options:{ emailRedirectTo: location.origin + location.pathname } });
     $('login-msg').innerHTML = error
-      ? `<div class="err">${esc(error.message)}</div>`
-      : `<div class="ok">Link sent to ${esc(email)}. Open it on this device.</div>`;
+      ? `<div class="flash err">${esc(error.message)}</div>`
+      : `<div class="flash ok">Link sent to ${esc(email)}. Open it on this device.</div>`;
   } finally { $('send-link').disabled = false; }
 });
 
 // ---------------------------------------------------------------- boot
 
-async function start(){
-  try {
-    await load();
-    show('app');
-    loadPostLists();
-  } catch (e) {
-    if (String(e.message).includes('forbidden')) return;   // denied view already shown
-    show('login');
-  }
-}
-
 (async function boot(){
   const hash = location.hash || '';
-  const looksLikeLink = hash.includes('access_token=') || hash.includes('type=magiclink') || hash.includes('error_code=');
-  if (looksLikeLink) {
-    // let gotrue exchange the URL fragment first
+  if (hash.includes('access_token=') || hash.includes('type=magiclink') || hash.includes('error_code=')) {
     for (let i = 0; i < 20; i++) {
       const { data } = await sb.auth.getSession();
       if (data?.session) { history.replaceState(null, '', location.pathname); break; }
@@ -606,7 +658,8 @@ async function start(){
     data = (await sb.auth.getSession()).data;
   }
   if (!data?.session) { show('login'); return; }
-  start();
+  try { await load(); show('app'); loadPostLists(); }
+  catch (e) { if (!String(e.message).includes('forbidden')) show('login'); }
 })();
 </script>
 </body>
