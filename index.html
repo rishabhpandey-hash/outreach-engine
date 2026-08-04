@@ -1585,10 +1585,14 @@ let PL = { campaign: null, metric: null, label: '', people: [], shown: [] };
 // upstream, and they do not always agree. Say so on screen rather than pick one.
 function plSubtitle(d, tileValue){
   const bits = [];
-  if (d.reported != null && d.count != null && d.reported !== d.count) {
+  // Only claim a de-duplicated people count when we actually have everyone. If the
+  // list is capped, the count is how many we are showing, not how many there are.
+  if (d.reported != null && d.count != null && d.reported !== d.count && !d.capped) {
     bits.push(d.reported_unit === 'emails'
       ? `${d.reported.toLocaleString()} emails recorded, from ${d.count.toLocaleString()} different people`
       : `${d.reported.toLocaleString()} recorded, ${d.count.toLocaleString()} listed`);
+  } else if (d.capped) {
+    bits.push(`${(d.reported ?? 0).toLocaleString()} in total`);
   }
   if (tileValue != null && d.count != null && Number(tileValue) !== d.count && Number(tileValue) !== d.reported) {
     bits.push(`the report above shows ${Number(tileValue).toLocaleString()}`);
