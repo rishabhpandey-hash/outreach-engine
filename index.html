@@ -192,6 +192,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <div class="tabs" id="views" style="margin-left:6px">
     <button class="tab on" data-view="linkedin">LinkedIn</button>
     <button class="tab" data-view="email">Cold emails</button>
+    <button class="tab hide" data-view="people" id="tab-people">People</button>
   </div>
   <div class="grow"></div>
   <span class="h-who" id="who"></span>
@@ -326,6 +327,19 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
     <div class="card-b flush" id="launch-list"></div>
   </div>
 </div>
+<div class="page hide" id="view-people">
+  <div id="pmsg"></div>
+  <div class="card">
+    <div class="card-h bordered">
+      <div class="card-t">Who can use this</div>
+      <div class="grow"></div>
+      <button class="btn-primary" id="new-user">Add someone</button>
+    </div>
+    <div class="card-s" style="padding:0 18px 14px">Give each person only what they need.
+      Access here does not give anyone the client reply inbox or the LinkedIn side.</div>
+    <div class="card-b flush" id="user-list"></div>
+  </div>
+</div>
 </div>
 
 <dialog id="etpl-dlg">
@@ -383,6 +397,25 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <div class="d-f"><button id="tp-cancel">Cancel</button><button class="btn-primary" id="tp-save">Save template</button></div>
 </dialog>
 
+<dialog id="user-dlg">
+  <div class="d-h"><strong id="u-title">Add someone</strong><button id="u-x">Close</button></div>
+  <div class="d-b">
+    <label class="f">Work email</label>
+    <input id="u-email" type="email" placeholder="name@company.com" autocomplete="off">
+    <label class="f" style="margin-top:14px">Name (optional)</label>
+    <input id="u-label" type="text" placeholder="Kinner">
+    <label class="f" style="margin-top:18px">What they can do</label>
+    <div id="u-rights"></div>
+    <div class="hint" id="u-warn"></div>
+  </div>
+  <div class="d-f">
+    <button class="btn-no" id="u-del">Remove access</button>
+    <div class="grow"></div>
+    <button id="u-cancel">Cancel</button>
+    <button class="btn-primary" id="u-save">Save</button>
+  </div>
+</dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 const PROJECT_REF = 'qypevxpscdhdrzlelolt';
@@ -432,7 +465,7 @@ async function api(path, opts = {}){
     headers:{ Authorization:'Bearer ' + t, 'Content-Type':'application/json', ...(opts.headers || {}) } });
   let b = null; try { b = await res.json(); } catch (_) {}
   if (res.status === 401) { show('login'); throw new Error('no session'); }
-  if (res.status === 403) { $('denied-email').textContent = S.viewer?.email ?? ''; show('denied'); throw new Error('forbidden'); }
+  if (res.status === 403) throw new Error('forbidden');
   if (!res.ok || b?.ok === false) throw new Error(b?.error ? b.error + (b.detail ? ': ' + b.detail : '') : 'HTTP ' + res.status);
   return b;
 }
@@ -797,6 +830,9 @@ async function loadEmail(force){
     const d = await eapi('/api/templates');
     E.templates = d.templates || []; E.launches = d.launches || [];
     E.sending = !!d.sending_enabled;
+    E.viewer = d.viewer || {};
+    $('new-tpl').classList.toggle('hide', !E.viewer.can_edit_templates);
+    $('launch').classList.toggle('hide', !E.viewer.can_launch);
     $('send-warn').classList.toggle('hide', E.sending);
     $('launch').disabled = !E.sending;
     $('launch-note').textContent = E.sending ? '' : 'Turned off while we build.';
@@ -879,15 +915,111 @@ async function launch(start){
   finally { btn.disabled = false; btn.textContent = label; if (start) $('launch').disabled = !E.sending; }
 }
 
-$('views').addEventListener('click', e => {
-  const b = e.target.closest('[data-view]'); if (!b) return;
-  const v = b.dataset.view;
-  for (const t of document.querySelectorAll('#views .tab')) t.classList.toggle('on', t === b);
+function switchView(v){
+  for (const t of document.querySelectorAll('#views .tab'))
+    t.classList.toggle('on', t.dataset.view === v);
   $('view-linkedin').classList.toggle('hide', v !== 'linkedin');
   $('view-email').classList.toggle('hide', v !== 'email');
+  $('view-people').classList.toggle('hide', v !== 'people');
   $('tpl-btn').classList.toggle('hide', v !== 'linkedin');
   if (v === 'email') loadEmail(false);
+  if (v === 'people') loadUsers();
+}
+$('views').addEventListener('click', e => {
+  const b = e.target.closest('[data-view]'); if (!b) return;
+  switchView(b.dataset.view);
 });
+
+// ---------------------------------------------------------------- people & rights
+
+let P = { users: [], rights: [], you: '', editing: null, loaded: false };
+
+function pflash(t, kind){
+  $('pmsg').innerHTML = t ? `<div class="flash ${kind}">${esc(scrub(t))}</div>` : '';
+  if (t) setTimeout(() => { $('pmsg').innerHTML = ''; }, 7000);
+}
+
+async function loadUsers(force){
+  if (P.loaded && !force) return;
+  try {
+    const d = await eapi('/api/users');
+    P.users = d.users || []; P.rights = d.rights || []; P.you = d.you || '';
+    P.loaded = true; renderUsers();
+  } catch (e) { pflash(e.message, 'err'); }
+}
+
+function renderUsers(){
+  if (!P.users.length) {
+    $('user-list').innerHTML = `<div class="empty"><div class="empty-t">Nobody added yet</div>
+      Add a teammate and tick only what they should be able to do.</div>`;
+    return;
+  }
+  $('user-list').innerHTML = P.users.map(u => {
+    const on = P.rights.filter(r => u[r.key]);
+    const chips = on.length
+      ? on.map(r => `<span class="mini m-copy">${esc(r.label)}</span>`).join(' ')
+      : `<span class="mini m-nocopy">No access yet</span>`;
+    return `<div class="person">
+      <div class="av">${esc((u.label || u.email || '?').charAt(0).toUpperCase())}</div>
+      <div class="p-main">
+        <div class="p-name">${esc(u.label || u.email)}
+          ${u.email === P.you ? '<span class="mini m-inv">you</span>' : ''}</div>
+        <div class="p-role">${esc(u.email)}</div>
+        <div class="p-why" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">${chips}</div>
+      </div>
+      <div class="p-act"><button data-user="${esc(u.email)}">Change</button></div>
+    </div>`;
+  }).join('');
+}
+
+function openUser(email){
+  const u = P.users.find(x => x.email === email) || null;
+  P.editing = u;
+  $('u-title').textContent = u ? 'Change what they can do' : 'Add someone';
+  $('u-email').value = u?.email || '';
+  $('u-email').disabled = !!u;
+  $('u-label').value = u?.label || '';
+  $('u-rights').innerHTML = P.rights.map(r => `
+    <label style="display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)">
+      <input type="checkbox" data-right="${r.key}" style="width:16px;height:16px;accent-color:var(--purple);margin-top:2px"
+        ${u && u[r.key] ? 'checked' : ''}>
+      <span><b>${esc(r.label)}</b><div class="hint" style="margin:1px 0 0">${esc(r.help)}</div></span>
+    </label>`).join('');
+  $('u-del').classList.toggle('hide', !u || u.email === P.you);
+  $('u-warn').textContent = u && u.email === P.you
+    ? 'This is you. You cannot remove your own access.' : '';
+  $('user-dlg').showModal();
+}
+
+async function saveUser(){
+  const payload = { email: $('u-email').value.trim().toLowerCase(), label: $('u-label').value.trim() || null };
+  for (const cb of $('u-rights').querySelectorAll('[data-right]')) payload[cb.dataset.right] = cb.checked;
+  if (!payload.email.includes('@')) { pflash('A valid work email is needed.', 'err'); return; }
+  try {
+    await eapi('/api/users', { method:'POST', body:JSON.stringify(payload) });
+    $('user-dlg').close();
+    pflash(`Saved. ${payload.email} can sign in with their work email and will see only what you ticked.`, 'ok');
+    await loadUsers(true);
+  } catch (e) { pflash(e.message, 'err'); }
+}
+
+async function delUser(){
+  if (!P.editing) return;
+  if (!confirm(`Remove access for ${P.editing.email}?`)) return;
+  try {
+    await eapi('/api/users/delete', { method:'POST', body:JSON.stringify({ email:P.editing.email }) });
+    $('user-dlg').close(); pflash('Access removed.', 'ok'); await loadUsers(true);
+  } catch (e) { pflash(e.message, 'err'); }
+}
+
+$('new-user').addEventListener('click', () => openUser(null));
+$('user-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-user]'); if (b) openUser(b.dataset.user);
+});
+$('u-save').addEventListener('click', saveUser);
+$('u-del').addEventListener('click', delUser);
+$('u-cancel').addEventListener('click', () => $('user-dlg').close());
+$('u-x').addEventListener('click', () => $('user-dlg').close());
 $('new-tpl').addEventListener('click', () => openTpl(null));
 $('tpl-list').addEventListener('click', e => {
   const b = e.target.closest('[data-etpl]'); if (b) openTpl(b.dataset.etpl);
@@ -916,8 +1048,26 @@ $('load-only').addEventListener('click', () => launch(false));
     data = (await sb.auth.getSession()).data;
   }
   if (!data?.session) { show('login'); return; }
-  try { await load(); show('app'); loadPostLists(); }
-  catch (e) { if (!String(e.message).includes('forbidden')) show('login'); }
+
+  // Someone may have cold-email access without LinkedIn access, or the reverse.
+  // Ask both, and only refuse if neither will have them.
+  let okLinkedIn = false;
+  try { await load(); okLinkedIn = true; } catch (_) { /* no LinkedIn access */ }
+  try { await loadEmail(true); } catch (_) { /* no email access */ }
+  const okEmail = !!E.loaded;
+
+  if (!okLinkedIn && !okEmail) {
+    $('denied-email').textContent = (await sb.auth.getSession()).data?.session?.user?.email ?? '';
+    show('denied'); return;
+  }
+
+  document.querySelector('[data-view="linkedin"]').classList.toggle('hide', !okLinkedIn);
+  document.querySelector('[data-view="email"]').classList.toggle('hide', !okEmail);
+  $('tab-people').classList.toggle('hide', !E.viewer?.is_admin);
+
+  show('app');
+  switchView(okLinkedIn ? 'linkedin' : 'email');
+  if (okLinkedIn) loadPostLists();
 })();
 </script>
 </body>
