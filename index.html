@@ -664,8 +664,10 @@ function renderPair(d){
       <div class="card-t">Replied on LinkedIn — stop emailing them</div></div>
     <div class="card-b">
       ${stop.length ? `<div class="row">
-          <span class="hint" style="margin:0">${stop.length} ${stop.length === 1 ? 'person' : 'people'}
-            answered on LinkedIn first and is still in the email campaign.</span>
+          <span class="hint" style="margin:0">${(d.to_stop_email_total ?? stop.length).toLocaleString()}
+            ${(d.to_stop_email_total ?? stop.length) === 1 ? 'person' : 'people'}
+            answered on LinkedIn first and are still in the email campaign${
+              d.to_stop_email_total > stop.length ? `, showing the first ${stop.length}` : ''}.</span>
           <div class="grow"></div>
           ${may ? '<button class="btn-primary" id="pair-stop">Stop their email</button>'
                 : '<span class="hint" style="margin:0">Stopping is not turned on for you.</span>'}
@@ -682,8 +684,10 @@ function renderPair(d){
         The LinkedIn platform's API cannot pause, stop or remove a lead from a campaign —
         there is no such endpoint. Open each person in the LinkedIn tool and remove them
         from <b>${esc(p.kn_campaign_name || 'the campaign')}</b>.</div>
-      ${pull.length ? `<div class="hint">${pull.length} ${pull.length === 1 ? 'person' : 'people'}
-        answered by email first and is still being messaged on LinkedIn.</div>`
+      ${pull.length ? `<div class="hint">${(d.to_pull_from_linkedin_total ?? pull.length).toLocaleString()}
+        ${(d.to_pull_from_linkedin_total ?? pull.length) === 1 ? 'person' : 'people'}
+        answered by email first and are still being messaged on LinkedIn${
+          d.to_pull_from_linkedin_total > pull.length ? `, showing the first ${pull.length}` : ''}.</div>`
         : '<div class="hint">Nobody to pull out right now.</div>'}
     </div>
     ${pull.length ? `<div class="plist">${pull.map(personLine).join('')}</div>` : ''}
@@ -691,10 +695,11 @@ function renderPair(d){
 
   ${c.on_both === 0 && p.synced_at ? `<div class="card"><div class="card-b">
     <div class="callout" style="margin-top:0"><b>These two campaigns have nobody in common.</b>
-      ${(d.only_email || 0).toLocaleString()} people are only on email and
-      ${(d.only_linkedin || 0).toLocaleString()} are only on LinkedIn, matched on their
-      LinkedIn handle. Either they are different audiences, or the email list has no
-      LinkedIn handles on it — without a handle the two sides cannot be matched.</div>
+      ${(c.only_email || 0).toLocaleString()} people are only on email and
+      ${(c.only_linkedin || 0).toLocaleString()} are only on LinkedIn. They are matched on
+      their LinkedIn handle, so either these are genuinely different audiences, or the
+      email list carries no LinkedIn handles — without a handle the two sides cannot be
+      matched at all. There is nothing to stop until one audience is worked on both.</div>
   </div></div>` : ''}`;
 
   $('pair-sync').addEventListener('click', () => syncPair(p.id));
@@ -719,8 +724,12 @@ async function syncPair(id){
     'Matching people on their handle…', 'Working out who replied first…']);
   try {
     const d = await eapi('/api/pairs/sync', { method:'POST', body:JSON.stringify({ pair_id:id }) });
-    flash(`${d.counts.on_both} of them are on both channels `
-      + `(${d.email_side.leads} on email, ${d.linkedin_side.members} on LinkedIn).`, 'ok');
+    const li = d.linkedin_side || {}, em = d.email_side || {};
+    flash(`${d.counts.on_both.toLocaleString()} people are on both channels. `
+      + `Email: ${em.leads.toLocaleString()} leads, ${em.with_handle.toLocaleString()} with a LinkedIn handle. `
+      + `LinkedIn: ${li.members.toLocaleString()} members`
+      + (li.no_public_handle ? `, ${li.no_public_handle} with no public handle so unmatchable` : '')
+      + '.', 'ok');
     await loadPairs(); await openPair(id);
   } catch (e) { flash(scrub(e.message), 'err'); }
   finally { hideLoader(); }
