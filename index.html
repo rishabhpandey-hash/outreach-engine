@@ -274,7 +274,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <div class="sum" id="sum"></div>
 
   <!-- STEP 1 -->
-  <div class="card">
+  <div class="card" id="step1">
     <div class="card-h">
       <div class="step">1</div>
       <div class="card-t">Bring in people who engaged with a post</div>
@@ -312,6 +312,9 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
       <button class="btn-yes" id="app-btn">Approve these</button>
     </div>
 
+    <div class="hint hide" id="li-readonly" style="margin:0;padding:12px 18px;border-bottom:1px solid var(--line)">
+      You can see this list. Approving people and writing their messages is not turned on for you —
+      an admin can change that under People.</div>
     <div class="card-b flush" id="people"></div>
   </div>
 
@@ -405,7 +408,8 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
       <button class="btn-primary" id="new-user">Add someone</button>
     </div>
     <div class="card-s" style="padding:0 18px 14px">Give each person only what they need.
-      Access here does not give anyone the client reply inbox or the LinkedIn side.</div>
+      This covers both channels of this tool. It does not give anyone the client reply inbox.</div>
+    <div id="legacy-note"></div>
     <div class="card-b flush" id="user-list"></div>
   </div>
   <div class="card">
@@ -670,10 +674,12 @@ function personRow(l, showTick){
     : '';
   const pushed = l.status === 'pushed' ? `<span class="mini m-done">In campaign</span>` : '';
   const role = [l.occupation, l.company].filter(Boolean).join(' · ');
-  const acts = S.tab === 'review'
-    ? `<button class="btn-no" data-no="${l.id}">Skip</button>
-       <button class="btn-yes" data-yes="${l.id}">Approve</button>`
-    : `<button data-edit="${l.id}">${l.connect_note ? 'Edit message' : 'Write message'}</button>`;
+  const acts = !may('can_li_decide')
+    ? (l.profile_url ? `<a class="btn-quiet" href="${esc(l.profile_url)}" target="_blank" rel="noopener noreferrer">Profile</a>` : '')
+    : S.tab === 'review'
+      ? `<button class="btn-no" data-no="${l.id}">Skip</button>
+         <button class="btn-yes" data-yes="${l.id}">Approve</button>`
+      : `<button data-edit="${l.id}">${l.connect_note ? 'Edit message' : 'Write message'}</button>`;
   return `<div class="person">
     ${showTick ? `<input type="checkbox" class="tick" data-id="${l.id}" ${S.sel.has(l.id) ? 'checked' : ''}>` : ''}
     <div class="av">${initial}</div>
@@ -706,8 +712,8 @@ function people(){
           <div class="grp-t">${esc(GROUP[g])}</div>
           <div class="grp-c">${rows.length} ${rows.length === 1 ? 'person' : 'people'}</div>
           <div class="grow"></div>
-          <button class="btn-quiet" data-selgrp="${g}">Select all</button>
-        </div>` + rows.map(l => personRow(l, true)).join('');
+          ${may('can_li_decide') ? `<button class="btn-quiet" data-selgrp="${g}">Select all</button>` : ''}
+        </div>` + rows.map(l => personRow(l, may('can_li_decide'))).join('');
     }).join('');
   } else {
     $('people').innerHTML = list.map(l => personRow(l, false)).join('');
@@ -737,7 +743,20 @@ async function load(){
   S.leads = d.leads || []; S.counts = d.counts || {}; S.viewer = d.viewer || null;
   S.sel = new Set([...S.sel].filter(id => S.leads.some(l => l.id === id)));
   $('who').textContent = S.viewer ? S.viewer.email : '';
+  applyLiRights();
   summary(); people(); draftState();
+}
+
+// Someone may be allowed to look at the list without being allowed to bring
+// people in, decide, or write. Hide what they cannot do rather than let them
+// click it and collect a 403.
+const may = r => !!(S.viewer && (S.viewer.is_admin || S.viewer[r]));
+
+function applyLiRights(){
+  $('step1').classList.toggle('hide', !may('can_li_import'));
+  $('step3').classList.toggle('hide', !may('can_li_decide'));
+  $('tpl-btn').classList.toggle('hide', !may('can_linkedin'));
+  $('li-readonly').classList.toggle('hide', may('can_li_decide'));
 }
 
 async function loadPostLists(){
@@ -842,8 +861,9 @@ async function openTemplates(){
   try {
     const d = await api('/api/templates');
     S.templates = d.templates || {}; fillTpl();
-    $('tp-note2').textContent = S.viewer?.is_admin ? '' : 'Only admins can save template changes.';
-    $('tp-save').disabled = !S.viewer?.is_admin;
+    $('tp-note2').textContent = may('can_li_templates')
+      ? '' : 'You can read these, but changing them is not turned on for you.';
+    $('tp-save').disabled = !may('can_li_templates');
     $('tpl-dlg').showModal();
   } catch (e) { flash(e.message, 'err'); }
 }
@@ -1206,7 +1226,7 @@ $('views').addEventListener('click', e => {
 
 // ---------------------------------------------------------------- people & rights
 
-let P = { users: [], rights: [], you: '', editing: null, loaded: false };
+let P = { users: [], rights: [], groups: [], legacy: [], you: '', editing: null, loaded: false };
 
 function pflash(t, kind){
   $('pmsg').innerHTML = t ? `<div class="flash ${kind}">${esc(scrub(t))}</div>` : '';
@@ -1218,6 +1238,7 @@ async function loadUsers(force){
   try {
     const d = await eapi('/api/users');
     P.users = d.users || []; P.rights = d.rights || []; P.you = d.you || '';
+    P.groups = d.right_groups || []; P.legacy = d.legacy_linkedin || [];
     P.campaigns = d.campaigns || [];
     P.loaded = true; renderUsers();
   } catch (e) { pflash(e.message, 'err'); }
@@ -1232,9 +1253,15 @@ function renderUsers(){
   $('user-list').innerHTML = P.users.map(u => {
     const on = P.rights.filter(r => u[r.key]);
     const scoped = (u.report_campaign_ids || []).length;
-    const chips = (on.length
-      ? on.map(r => `<span class="mini m-copy">${esc(r.label)}</span>`).join(' ')
-      : `<span class="mini m-nocopy">No access yet</span>`)
+    const byGroup = (P.groups.length ? P.groups : ['LinkedIn', 'Cold emails', 'Everything'])
+      .map(g => {
+        const all = P.rights.filter(r => r.group === g);
+        const got = all.filter(r => u[r.key]).length;
+        if (!got) return '';
+        const full = u.is_admin || got === all.length;
+        return `<span class="mini m-copy">${esc(g)}${full || all.length < 2 ? '' : ` · ${got} of ${all.length}`}</span>`;
+      }).filter(Boolean).join(' ');
+    const chips = (on.length ? byGroup : `<span class="mini m-nocopy">No access yet</span>`)
       + (u.can_analytics && !u.is_admin
           ? ` <span class="mini m-inv">${scoped ? scoped + ' campaign' + (scoped === 1 ? '' : 's') : 'all campaigns'}</span>`
           : '');
@@ -1249,21 +1276,42 @@ function renderUsers(){
       <div class="p-act"><button data-user="${esc(u.email)}">Change</button></div>
     </div>`;
   }).join('');
+  renderLegacy();
 }
 
-function openUser(email){
+function renderLegacy(){
+  const box = $('legacy-note');
+  if (!P.legacy.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="card-b" style="padding-top:0">
+    <div class="hint" style="margin:0 0 8px"><b>${P.legacy.length}</b>
+      ${P.legacy.length === 1 ? 'person reaches' : 'people reach'} the LinkedIn list through the
+      old client-inbox whitelist instead of a row here. They can see the list, bring people in
+      and approve, but not edit copy or send to a campaign. Add them below to control it properly.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${P.legacy.map(l =>
+      `<button class="btn-quiet" data-legacy="${esc(l.email)}">${esc(l.label || l.email)} — add</button>`
+    ).join('')}</div></div>`;
+}
+
+function openUser(email, prefill){
   const u = P.users.find(x => x.email === email) || null;
   P.editing = u;
   $('u-title').textContent = u ? 'Change what they can do' : 'Add someone';
-  $('u-email').value = u?.email || '';
+  $('u-email').value = u?.email || prefill?.email || '';
   $('u-email').disabled = !!u;
-  $('u-label').value = u?.label || '';
-  $('u-rights').innerHTML = P.rights.map(r => `
+  $('u-label').value = u?.label || prefill?.label || '';
+  const groups = P.groups.length ? P.groups : [...new Set(P.rights.map(r => r.group || ''))];
+  const toggle = r => `
     <label style="display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)">
       <input type="checkbox" data-right="${r.key}" style="width:16px;height:16px;accent-color:var(--purple);margin-top:2px"
-        ${u && u[r.key] ? 'checked' : ''}>
+        ${(u ? u[r.key] : prefill?.rights?.includes(r.key)) ? 'checked' : ''}>
       <span><b>${esc(r.label)}</b><div class="hint" style="margin:1px 0 0">${esc(r.help)}</div></span>
-    </label>`).join('');
+    </label>`;
+  $('u-rights').innerHTML = groups.map(g => {
+    const rows = P.rights.filter(r => (r.group || '') === g);
+    if (!rows.length) return '';
+    return `<div class="grp" style="margin-top:6px"><div class="grp-t">${esc(g)}</div></div>`
+      + rows.map(toggle).join('');
+  }).join('') || P.rights.map(toggle).join('');
   const chosen = new Set((u?.report_campaign_ids || []).map(String));
   $('u-scope').innerHTML = (P.campaigns || []).map(c => `
     <label style="display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)">
@@ -1327,6 +1375,14 @@ $('u-scope-none').addEventListener('click', () => {
   $('u-scope').querySelectorAll('[data-camp]').forEach(b => { b.checked = false; }); paintScopeCount();
 });
 $('new-user').addEventListener('click', () => openUser(null));
+$('legacy-note').addEventListener('click', e => {
+  const b = e.target.closest('[data-legacy]'); if (!b) return;
+  const l = P.legacy.find(x => x.email === b.dataset.legacy); if (!l) return;
+  // Tick what they already get from the old whitelist, nothing more.
+  const rights = ['can_linkedin', 'can_li_import', 'can_li_decide']
+    .concat(l.was_admin ? ['is_admin'] : []);
+  openUser(null, { email: l.email, label: l.label, rights });
+});
 $('user-list').addEventListener('click', e => {
   const b = e.target.closest('[data-user]'); if (b) openUser(b.dataset.user);
 });
