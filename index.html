@@ -513,6 +513,20 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
     <input id="u-label" type="text" placeholder="Kinner">
     <label class="f" style="margin-top:18px">What they can do</label>
     <div id="u-rights"></div>
+
+    <div id="u-scope-wrap" class="hide">
+      <label class="f" style="margin-top:18px">Which campaign reports they can see</label>
+      <div class="hint" style="margin-top:0">Tick nothing to give them every campaign.
+        Tick some and they will only ever see those.</div>
+      <div class="row" style="margin:9px 0">
+        <button type="button" id="u-scope-all">Select all</button>
+        <button type="button" id="u-scope-none">Clear all</button>
+        <span class="hint" style="margin:0" id="u-scope-count"></span>
+      </div>
+      <div id="u-scope" style="max-height:210px;overflow:auto;border:1px solid var(--line);
+        border-radius:8px;padding:4px 12px"></div>
+    </div>
+
     <div class="hint" id="u-warn"></div>
   </div>
   <div class="d-f">
@@ -1143,6 +1157,7 @@ async function loadUsers(force){
   try {
     const d = await eapi('/api/users');
     P.users = d.users || []; P.rights = d.rights || []; P.you = d.you || '';
+    P.campaigns = d.campaigns || [];
     P.loaded = true; renderUsers();
   } catch (e) { pflash(e.message, 'err'); }
 }
@@ -1155,9 +1170,13 @@ function renderUsers(){
   }
   $('user-list').innerHTML = P.users.map(u => {
     const on = P.rights.filter(r => u[r.key]);
-    const chips = on.length
+    const scoped = (u.report_campaign_ids || []).length;
+    const chips = (on.length
       ? on.map(r => `<span class="mini m-copy">${esc(r.label)}</span>`).join(' ')
-      : `<span class="mini m-nocopy">No access yet</span>`;
+      : `<span class="mini m-nocopy">No access yet</span>`)
+      + (u.can_analytics && !u.is_admin
+          ? ` <span class="mini m-inv">${scoped ? scoped + ' campaign' + (scoped === 1 ? '' : 's') : 'all campaigns'}</span>`
+          : '');
     return `<div class="person">
       <div class="av">${esc((u.label || u.email || '?').charAt(0).toUpperCase())}</div>
       <div class="p-main">
@@ -1184,6 +1203,17 @@ function openUser(email){
         ${u && u[r.key] ? 'checked' : ''}>
       <span><b>${esc(r.label)}</b><div class="hint" style="margin:1px 0 0">${esc(r.help)}</div></span>
     </label>`).join('');
+  const chosen = new Set((u?.report_campaign_ids || []).map(String));
+  $('u-scope').innerHTML = (P.campaigns || []).map(c => `
+    <label style="display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)">
+      <input type="checkbox" data-camp="${c.id}" style="width:15px;height:15px;accent-color:var(--purple)"
+        ${chosen.has(String(c.id)) ? 'checked' : ''}>
+      <span style="flex:1">${esc(c.name)}</span>
+      <span class="mini m-inv">${esc(c.status)}</span>
+    </label>`).join('') || '<div class="hint">No campaigns found.</div>';
+  paintScopeCount();
+  syncScopeVisibility();
+
   $('u-del').classList.toggle('hide', !u || u.email === P.you);
   $('u-warn').textContent = u && u.email === P.you
     ? 'This is you. You cannot remove your own access.' : '';
@@ -1193,6 +1223,8 @@ function openUser(email){
 async function saveUser(){
   const payload = { email: $('u-email').value.trim().toLowerCase(), label: $('u-label').value.trim() || null };
   for (const cb of $('u-rights').querySelectorAll('[data-right]')) payload[cb.dataset.right] = cb.checked;
+  payload.report_campaign_ids = [...$('u-scope').querySelectorAll('[data-camp]')]
+    .filter(b => b.checked).map(b => Number(b.dataset.camp));
   if (!payload.email.includes('@')) { pflash('A valid work email is needed.', 'err'); return; }
   try {
     await eapi('/api/users', { method:'POST', body:JSON.stringify(payload) });
@@ -1211,6 +1243,27 @@ async function delUser(){
   } catch (e) { pflash(e.message, 'err'); }
 }
 
+function paintScopeCount(){
+  const boxes = [...$('u-scope').querySelectorAll('[data-camp]')];
+  const on = boxes.filter(b => b.checked).length;
+  $('u-scope-count').textContent = on === 0
+    ? 'All campaigns' : `${on} of ${boxes.length} campaigns`;
+}
+function syncScopeVisibility(){
+  const analytics = $('u-rights').querySelector('[data-right="can_analytics"]');
+  const admin = $('u-rights').querySelector('[data-right="is_admin"]');
+  // admins always see everything, so the picker is pointless for them
+  const show = !!analytics?.checked && !admin?.checked;
+  $('u-scope-wrap').classList.toggle('hide', !show);
+}
+$('u-rights').addEventListener('change', syncScopeVisibility);
+$('u-scope').addEventListener('change', paintScopeCount);
+$('u-scope-all').addEventListener('click', () => {
+  $('u-scope').querySelectorAll('[data-camp]').forEach(b => { b.checked = true; }); paintScopeCount();
+});
+$('u-scope-none').addEventListener('click', () => {
+  $('u-scope').querySelectorAll('[data-camp]').forEach(b => { b.checked = false; }); paintScopeCount();
+});
 $('new-user').addEventListener('click', () => openUser(null));
 $('user-list').addEventListener('click', e => {
   const b = e.target.closest('[data-user]'); if (b) openUser(b.dataset.user);
