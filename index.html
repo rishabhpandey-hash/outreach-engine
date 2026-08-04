@@ -179,6 +179,29 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
 .d-f{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:9px;
   justify-content:flex-end;background:var(--gray)}
 
+/* ---------- loader ---------- */
+#loader{position:fixed;inset:0;z-index:200;display:grid;place-items:center;
+  background:rgba(249,250,251,.7);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  animation:ldIn .18s ease-out}
+@keyframes ldIn{from{opacity:0}to{opacity:1}}
+.ld-card{background:#fff;border:1px solid var(--line);border-radius:18px;
+  padding:30px 38px;text-align:center;min-width:300px;
+  box-shadow:0 26px 70px rgba(17,24,39,.20)}
+.ld-ring{width:66px;height:66px;margin:0 auto 18px;border-radius:50%;
+  background:conic-gradient(from 0deg,#6B21A8,#a855f7,#f0abfc,#a855f7,#6B21A8);
+  animation:ldSpin 1s linear infinite;
+  -webkit-mask:radial-gradient(farthest-side,#0000 calc(100% - 8px),#000 0);
+  mask:radial-gradient(farthest-side,#0000 calc(100% - 8px),#000 0)}
+@keyframes ldSpin{to{transform:rotate(360deg)}}
+.ld-title{font-weight:700;font-size:16px;letter-spacing:-.01em}
+.ld-msg{font-size:13.5px;color:var(--ink2);margin-top:7px;min-height:19px;
+  animation:ldFade .35s ease-out}
+@keyframes ldFade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.ld-bar{margin-top:16px;height:4px;border-radius:4px;background:var(--purple-soft);overflow:hidden}
+.ld-bar i{display:block;height:100%;width:38%;border-radius:4px;
+  background:linear-gradient(90deg,#6B21A8,#c084fc);animation:ldSlide 1.25s ease-in-out infinite}
+@keyframes ldSlide{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+
 #boot,#login,#denied{max-width:430px;margin:15vh auto;padding:0 20px}
 #boot{text-align:center;color:var(--ink2)}
 .auth{background:var(--white);border:1px solid var(--line);border-radius:var(--r);
@@ -188,6 +211,15 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
 </style>
 </head>
 <body>
+
+<div id="loader" class="hide">
+  <div class="ld-card">
+    <div class="ld-ring"></div>
+    <div class="ld-title" id="ld-title">Pulling the numbers</div>
+    <div class="ld-msg" id="ld-msg"></div>
+    <div class="ld-bar"><i></i></div>
+  </div>
+</div>
 
 <div id="boot">Loading…</div>
 
@@ -525,6 +557,27 @@ function scrub(s){
     .replace(/konnector/gi, 'the outreach system');
 }
 
+let _ldTimer = null;
+function showLoader(title, msgs){
+  $('ld-title').textContent = title;
+  const list = (msgs && msgs.length) ? msgs : ['Working on it'];
+  let i = 0;
+  const paint = () => {
+    const el = $('ld-msg');
+    el.textContent = list[i % list.length];
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    i++;
+  };
+  paint();
+  clearInterval(_ldTimer);
+  _ldTimer = setInterval(paint, 1600);
+  $('loader').classList.remove('hide');
+}
+function hideLoader(){
+  clearInterval(_ldTimer); _ldTimer = null;
+  $('loader').classList.add('hide');
+}
+
 function show(v){ for (const x of ['boot','login','denied','app']) $(x).classList.toggle('hide', x !== v); }
 function flash(t, kind){
   $('msg').innerHTML = t ? `<div class="flash ${kind}">${esc(scrub(t))}</div>` : '';
@@ -810,7 +863,10 @@ $('app-btn').addEventListener('click', () => decide([...S.sel], 'approve'));
 $('rej-btn').addEventListener('click', () => decide([...S.sel], 'reject'));
 $('draft-all').addEventListener('click', draftAll);
 $('pull').addEventListener('click', pull);
-$('refresh').addEventListener('click', () => load().catch(e => flash(e.message, 'err')));
+$('refresh').addEventListener('click', async () => {
+  showLoader('Refreshing', ['Fetching the latest\u2026', 'Nearly done\u2026']);
+  try { await load(); } catch (e) { flash(e.message, 'err'); } finally { hideLoader(); }
+});
 $('tpl-btn').addEventListener('click', openTemplates);
 $('tp-fit').addEventListener('change', fillTpl);
 $('tp-save').addEventListener('click', saveTpl);
@@ -1235,6 +1291,9 @@ function rflash(t, kind){
 async function loadResults(force){
   if (R.loaded && !force) return;
   $('r-headline').textContent = 'Working out the numbers\u2026';
+  showLoader('Pulling the numbers', [
+    'Reading every campaign\u2026', 'Counting the replies\u2026', 'Checking what bounced\u2026',
+    'Separating real interest from noise\u2026', 'Almost there\u2026']);
   try {
     const d = await eapi('/api/analytics' + (force ? '?refresh=1' : ''));
     R.loaded = true;
@@ -1279,7 +1338,7 @@ async function loadResults(force){
   } catch (e) {
     $('r-headline').textContent = 'Could not load results';
     rflash(e.message, 'err');
-  }
+  } finally { hideLoader(); }
 }
 $('r-refresh').addEventListener('click', () => loadResults(true));
 
@@ -1291,13 +1350,16 @@ async function openReport(id){
   $('view-results').classList.add('hide');
   $('view-report').classList.remove('hide');
   $('rep-body').innerHTML = '<div class="empty">Building the report…</div>';
+  showLoader('Building the report', [
+    'Opening the campaign…', 'Measuring every step…', 'Checking mailbox health…',
+    'Finding where people drop off…', 'Putting it together…']);
   try {
     const d = await eapi('/api/report?campaign_id=' + encodeURIComponent(id) + '&days=30');
     renderReport(d);
   } catch (e) {
     $('rep-body').innerHTML = `<div class="card"><div class="card-b">
       <b>Could not build this report.</b><div class="hint">${esc(scrub(e.message))}</div></div></div>`;
-  }
+  } finally { hideLoader(); }
 }
 
 function renderReport(d){
