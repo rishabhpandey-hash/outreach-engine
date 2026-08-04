@@ -98,6 +98,11 @@ table.rep td.num,table.rep th.num{text-align:right;font-variant-numeric:tabular-
 .dl .dt{font-size:12.5px;color:var(--ink2)}
 .dl .dd{font-size:17px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums}
 .dl .dn{font-size:12px;color:var(--ink2);margin-top:3px}
+.step-card{border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:12px}
+.step-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.step-n{width:22px;height:22px;border-radius:50%;background:var(--purple-soft);color:var(--purple);
+  border:1px solid var(--purple-line);display:grid;place-items:center;font-size:11.5px;font-weight:700}
+.step-head b{flex:1}
 .verdict{padding:12px 14px;border-left:3px solid var(--purple);background:var(--purple-soft);
   border-radius:0 8px 8px 0;margin-bottom:9px;font-size:14px}
 @media (max-width:640px){.sum{grid-template-columns:1fr}}
@@ -448,10 +453,11 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <div class="d-b">
     <label class="f">Name <span style="color:var(--ink2);font-weight:400">— just for you, not sent</span></label>
     <input id="et-name" placeholder="e.g. Associations — content hub angle">
-    <label class="f" style="margin-top:14px">Subject line</label>
-    <input id="et-subject" placeholder="e.g. {{first_name}}, a thought on {{company_name}}">
-    <label class="f" style="margin-top:14px">Email body</label>
-    <textarea id="et-body" rows="14" placeholder="Write the email. Merge tags like {{first_name}} work as normal."></textarea>
+    <div id="et-steps"></div>
+    <div class="row" style="margin-top:12px">
+      <button type="button" id="et-add-step">+ Add a follow-up</button>
+      <span class="hint" style="margin:0" id="et-step-count"></span>
+    </div>
     <div class="hint">Merge tags such as <span class="mono">{{first_name}}</span> and
       <span class="mono">{{company_name}}</span> are filled in for each recipient automatically.</div>
     <div id="et-tagcheck" class="hint"></div>
@@ -531,6 +537,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   </div>
   <div class="d-f">
     <button class="btn-no" id="u-del">Remove access</button>
+    <button type="button" id="u-invite" class="hide">Get sign-in link</button>
     <div class="grow"></div>
     <button id="u-cancel">Cancel</button>
     <button class="btn-primary" id="u-save">Save</button>
@@ -943,6 +950,7 @@ function renderTemplates(){
         <div class="p-main">
           <div class="p-name">${esc(t.name)}</div>
           <div class="p-role" title="${esc(t.subject)}">Subject: ${esc(t.subject)}</div>
+          <div class="p-why">${(t.steps && t.steps.length) || 1} email${((t.steps && t.steps.length) || 1) === 1 ? '' : 's'} in this sequence</div>
           <div class="p-why">${esc((t.body || '').replace(/<[^>]+>/g, ' ').slice(0, 130))}…</div>
         </div>
         <div class="p-act"><button data-etpl="${t.id}">Edit</button></div>
@@ -1011,8 +1019,10 @@ async function loadEmail(force){
 // Live preview, and flag merge tags the chosen campaign's leads cannot fill in.
 const SAFE_TAGS = ['first_name','last_name','email','company_name','website','location','phone_number'];
 function refreshPreview(){
-  const subj = $('et-subject').value || '(no subject)';
-  const body = $('et-body').value || '';
+  const first = $('et-steps')?.querySelector('[data-subject="0"]');
+  const firstBody = $('et-steps')?.querySelector('[data-body="0"]');
+  const subj = (first?.value) || '(no subject)';
+  const body = (firstBody?.value) || '';
   const demo = { first_name:'Jane', last_name:'Doe', email:'jane@example.com',
     company_name:'Example Ltd', org:'Example Ltd', website:'example.com',
     location:'London', phone_number:'', title:'Head of Marketing' };
@@ -1033,13 +1043,62 @@ function refreshPreview(){
         (E.campFields && E.campFields.length) ? ' \u2014 all present on this campaign\u2019s leads.' : ''}`;
 }
 
+function stepCard(i, st){
+  return `<div class="step-card" data-step="${i}">
+    <div class="step-head">
+      <div class="step-n">${i + 1}</div>
+      <b>${i === 0 ? 'First email' : 'Follow-up ' + i}</b>
+      ${i > 0 ? `<label class="hint" style="margin:0">send
+        <input type="number" min="1" max="60" value="${st.delay_days || 3}" data-delay="${i}"
+          style="width:62px;display:inline-block;padding:4px 7px;margin:0 4px"> days later</label>
+        <button type="button" data-rmstep="${i}">Remove</button>` : ''}
+    </div>
+    <input data-subject="${i}" placeholder="Subject line" value="${esc(st.subject || '')}">
+    <textarea data-body="${i}" rows="${i === 0 ? 11 : 6}"
+      placeholder="Write the email. Merge tags like {{first_name}} work as normal."
+      style="margin-top:8px">${esc(st.body || '')}</textarea>
+  </div>`;
+}
+
+function renderSteps(){
+  $('et-steps').innerHTML = E.steps.map((st, i) => stepCard(i, st)).join('');
+  $('et-step-count').textContent = E.steps.length === 1
+    ? 'One email. Add follow-ups if the campaign should chase.'
+    : `${E.steps.length} emails in this sequence.`;
+  refreshPreview();
+}
+
+function collectSteps(){
+  return E.steps.map((_, i) => ({
+    subject: ($('et-steps').querySelector(`[data-subject="${i}"]`)?.value || '').trim(),
+    body: ($('et-steps').querySelector(`[data-body="${i}"]`)?.value || '').trim(),
+    delay_days: i === 0 ? 0 : Number($('et-steps').querySelector(`[data-delay="${i}"]`)?.value || 3),
+  }));
+}
+
+$('et-add-step').addEventListener('click', () => {
+  E.steps = collectSteps();
+  if (E.steps.length >= 10) { eflash('Ten steps is the maximum.', 'err'); return; }
+  E.steps.push({ subject:'', body:'', delay_days:3 });
+  renderSteps();
+});
+$('et-steps').addEventListener('click', e => {
+  const b = e.target.closest('[data-rmstep]'); if (!b) return;
+  E.steps = collectSteps();
+  E.steps.splice(Number(b.dataset.rmstep), 1);
+  renderSteps();
+});
+$('et-steps').addEventListener('input', refreshPreview);
+
 function openTpl(id){
   const t = E.templates.find(x => x.id === id) || null;
   E.editing = t;
   $('et-title').textContent = t ? 'Edit template' : 'New template';
   $('et-name').value = t?.name || '';
-  $('et-subject').value = t?.subject || '';
-  $('et-body').value = t?.body || '';
+  E.steps = (t?.steps && t.steps.length)
+    ? t.steps.map((x, i) => ({ subject:x.subject||'', body:x.body||'', delay_days: i ? (x.delay_days||3) : 0 }))
+    : [{ subject: t?.subject || '', body: t?.body || '', delay_days: 0 }];
+  renderSteps();
   $('et-notes').value = t?.notes || '';
   $('et-del').classList.toggle('hide', !t);
   refreshPreview();
@@ -1047,13 +1106,15 @@ function openTpl(id){
 }
 
 async function saveTpl2(){
+  E.steps = collectSteps();
   const payload = {
     id: E.editing?.id, name: $('et-name').value.trim(),
-    subject: $('et-subject').value.trim(), body: $('et-body').value.trim(),
-    notes: $('et-notes').value.trim() || null,
+    steps: E.steps, notes: $('et-notes').value.trim() || null,
   };
-  if (!payload.name || !payload.subject || !payload.body) {
-    eflash('Name, subject and body are all needed.', 'err'); return;
+  if (!payload.name) { eflash('Give the template a name.', 'err'); return; }
+  const bad = E.steps.findIndex(x => !x.subject || !x.body);
+  if (bad > -1) {
+    eflash(`Email ${bad + 1} needs both a subject and a body.`, 'err'); return;
   }
   try {
     await eapi('/api/templates', { method:'POST', body:JSON.stringify(payload) });
@@ -1215,6 +1276,7 @@ function openUser(email){
   syncScopeVisibility();
 
   $('u-del').classList.toggle('hide', !u || u.email === P.you);
+  $('u-invite').classList.toggle('hide', !u);
   $('u-warn').textContent = u && u.email === P.you
     ? 'This is you. You cannot remove your own access.' : '';
   $('user-dlg').showModal();
@@ -1268,6 +1330,21 @@ $('new-user').addEventListener('click', () => openUser(null));
 $('user-list').addEventListener('click', e => {
   const b = e.target.closest('[data-user]'); if (b) openUser(b.dataset.user);
 });
+async function inviteUser(){
+  if (!P.editing) return;
+  $('u-invite').disabled = true;
+  try {
+    const d = await eapi('/api/users/invite', { method:'POST',
+      body:JSON.stringify({ email:P.editing.email }) });
+    if (!d.link) throw new Error('No link came back.');
+    try { await navigator.clipboard.writeText(d.link); } catch (_) {}
+    $('u-warn').innerHTML = `<b>Sign-in link copied.</b> Send it to ${esc(P.editing.email)} directly —
+      WhatsApp, Slack, anywhere. It works once and then expires.
+      <div class="mono" style="margin-top:6px;word-break:break-all">${esc(d.link)}</div>`;
+  } catch (e) { pflash(e.message, 'err'); }
+  finally { $('u-invite').disabled = false; }
+}
+$('u-invite').addEventListener('click', inviteUser);
 $('u-save').addEventListener('click', saveUser);
 $('u-del').addEventListener('click', delUser);
 $('u-cancel').addEventListener('click', () => $('user-dlg').close());
@@ -1593,8 +1670,7 @@ $('launch-list').addEventListener('click', e => {
   const b = e.target.closest('[data-undo]'); if (b) undoLoad(b.dataset.undo);
 });
 $('pick-camp').addEventListener('change', loadCampInfo);
-$('et-subject').addEventListener('input', refreshPreview);
-$('et-body').addEventListener('input', refreshPreview);
+
 $('pause-camp').addEventListener('click', pauseCampaign);
 $('send-toggle').addEventListener('click', toggleSending);
 $('launch').addEventListener('click', () => launch(true));
