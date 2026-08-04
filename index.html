@@ -287,7 +287,6 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   </div>
   <div class="grow"></div>
   <span class="h-who" id="who"></span>
-  <button class="btn-quiet" id="tpl-btn">Message templates</button>
   <button id="refresh">Refresh</button>
   <button id="logout">Sign out</button>
 </header>
@@ -295,77 +294,21 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
 <div class="page" id="view-linkedin">
   <div id="msg"></div>
 
-  <div class="sum" id="sum"></div>
-
-  <!-- STEP 1 -->
-  <div class="card" id="step1">
-    <div class="card-h">
-      <div class="step">1</div>
-      <div class="card-t">People who engaged with your posts</div>
-      <div class="card-s">Scrape a post in the outreach tool. Everyone who liked or commented on it
-        turns up here on its own, minus anyone we are already talking to. There is nothing to pick.</div>
-    </div>
-    <div class="card-b">
-      <div class="row">
-        <button class="btn-primary" id="discover">Check for new posts</button>
-        <span class="hint" style="margin:0" id="kl-note">Checking…</span>
-      </div>
-      <div id="kl-warn"></div>
-    </div>
-  </div>
-
-  <!-- STEP 2 -->
   <div class="card">
     <div class="card-h bordered">
-      <div class="step">2</div>
-      <div class="card-t">Decide who's worth talking to</div>
+      <div class="card-t">Campaigns running on both channels</div>
       <div class="grow"></div>
-      <div class="tabs" id="tabs"></div>
+      <button class="btn-primary hide" id="pair-new">Pair a campaign</button>
     </div>
-
-    <div class="bulk hide" id="bulk">
-      <b id="bulk-n">0 selected</b>
-      <div class="grow"></div>
-      <select id="refit" style="width:auto">
-        <option value="">Change group to…</option>
-        <option value="partner_agency">Could be a partner</option>
-        <option value="b2b">Could be a customer</option>
-        <option value="membership">Association / member body</option>
-        <option value="exclude">Not a fit</option>
-      </select>
-      <button class="btn-no" id="rej-btn">Skip these</button>
-      <button class="btn-yes" id="app-btn">Approve these</button>
+    <div class="card-s" style="padding:0 18px 14px">
+      Link an email campaign to the LinkedIn campaign that is working the same people.
+      Whoever replies first on one channel gets stopped on the other, so nobody is
+      chased on two channels at once.
     </div>
-
-    <div class="hint hide" id="li-readonly" style="margin:0;padding:12px 18px;border-bottom:1px solid var(--line)">
-      You can see this list. Approving people and writing their messages is not turned on for you —
-      an admin can change that under People.</div>
-    <div class="card-b flush" id="people"></div>
+    <div class="card-b flush" id="pair-list"></div>
   </div>
 
-  <!-- STEP 3 -->
-  <div class="card" id="step3">
-    <div class="card-h bordered">
-      <div class="step">3</div>
-      <div class="card-t">Write their messages</div>
-      <div class="card-s">Each person gets their own invite note and first message, using their name and company. Edit anyone individually.</div>
-    </div>
-    <div class="card-b">
-      <div class="row">
-        <button class="btn-primary" id="draft-all">Write messages for approved people</button>
-        <span class="hint" style="margin:0" id="draft-state"></span>
-      </div>
-      <details style="margin-top:14px">
-        <summary>How this works</summary>
-        <ol style="color:var(--ink2);font-size:13.5px;padding-left:20px;margin:0">
-          <li>Everyone you approve gets copy written from the template for their group.</li>
-          <li>Their first name and company are filled in automatically.</li>
-          <li>Open anyone to reword their message before it goes anywhere.</li>
-          <li>Once you're happy, the approved list gets pushed into a campaign.</li>
-        </ol>
-      </details>
-    </div>
-  </div>
+  <div id="pair-detail"></div>
 </div>
 
 <div class="page hide" id="view-email">
@@ -505,18 +448,19 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   </div>
 </dialog>
 
-<dialog id="lead-dlg">
-  <div class="d-h"><strong id="ld-name">Person</strong><button id="ld-x">Close</button></div>
+<dialog id="pair-dlg">
+  <div class="d-h"><strong>Pair a campaign</strong><button id="np-x">Close</button></div>
   <div class="d-b">
-    <div class="hint" id="ld-meta" style="margin:0 0 14px"></div>
-    <div class="hint" id="ld-about" style="margin:0 0 16px"></div>
-    <label class="f">Invite note <span style="color:var(--ink2);font-weight:400">— sent with the connection request</span></label>
-    <textarea id="ld-note" rows="3"></textarea>
-    <div class="hint" id="ld-count"></div>
-    <label class="f" style="margin-top:16px">First message <span style="color:var(--ink2);font-weight:400">— sent after they accept</span></label>
-    <textarea id="ld-msg" rows="8"></textarea>
+    <p class="hint" id="np-msg" style="margin:0 0 14px"></p>
+    <label class="f">Email campaign</label>
+    <select id="np-sl"></select>
+    <label class="f" style="margin-top:16px">LinkedIn campaign</label>
+    <select id="np-kn"></select>
+    <label class="f" style="margin-top:16px">Name for this pair (optional)</label>
+    <input id="np-label" placeholder="e.g. Coaches India, both channels">
   </div>
-  <div class="d-f"><button id="ld-cancel">Cancel</button><button class="btn-primary" id="ld-save">Save</button></div>
+  <div class="d-f"><button id="np-cancel">Cancel</button>
+    <button class="btn-primary" id="np-save">Pair them</button></div>
 </dialog>
 
 <dialog id="people-dlg">
@@ -533,25 +477,6 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   </div>
 </dialog>
 
-<dialog id="tpl-dlg">
-  <div class="d-h"><strong>Message templates</strong><button id="tp-x">Close</button></div>
-  <div class="d-b">
-    <p class="hint" style="margin:0 0 14px">One template per group. Write <span class="mono">{{first_name}}</span> or
-      <span class="mono">{{company_name}}</span> and we'll fill them in per person.</p>
-    <label class="f">Group</label>
-    <select id="tp-fit">
-      <option value="partner_agency">Could be a partner</option>
-      <option value="b2b">Could be a customer</option>
-      <option value="membership">Association / member body</option>
-    </select>
-    <label class="f" style="margin-top:16px">Invite note</label>
-    <textarea id="tp-note" rows="3"></textarea>
-    <label class="f" style="margin-top:16px">First message</label>
-    <textarea id="tp-msg" rows="9"></textarea>
-    <div class="hint" id="tp-note2"></div>
-  </div>
-  <div class="d-f"><button id="tp-cancel">Cancel</button><button class="btn-primary" id="tp-save">Save template</button></div>
-</dialog>
 
 <dialog id="user-dlg">
   <div class="d-h"><strong id="u-title">Add someone</strong><button id="u-x">Close</button></div>
@@ -595,16 +520,6 @@ const SUPABASE_URL = 'https://' + PROJECT_REF + '.supabase.co';
 // policies; the API authorises the signed-in user server-side).
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cGV2eHBzY2RoZHJ6bGVsb2x0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MDE0NjYsImV4cCI6MjEwMDk3NzQ2Nn0.DsagYyW2kbvWOtBt-XUh8ube4YbFc2snbROLCIBxs5Y';
 const API = SUPABASE_URL + '/functions/v1/engage';
-
-// Plain-language names. The machine words stay in the database.
-const GROUP = {
-  partner_agency:'Could be a partner',
-  b2b:'Could be a customer',
-  membership:'Association / member body',
-  review:"Not sure — you decide",
-  exclude:'Not a fit'
-};
-const GROUP_ORDER = ['partner_agency','b2b','membership','review'];
 
 const sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
 const $ = id => document.getElementById(id);
@@ -662,324 +577,231 @@ async function api(path, opts = {}){
   return b;
 }
 
-// Turn rule output into something a human reads without thinking.
-function why(l){
-  const r = l.fit_reason || '';
-  let m;
-  if (r.includes('already in an active outreach')) return `Already in one of our campaigns`;
-  if (r.startsWith('own team')) return `One of our own team`;
-  if (r === 'no rule matched' || r === 'no keyword matched') return `Couldn't tell from their profile — worth a quick look`;
-  if ((m = r.match(/^headline matched "(.+)"$/))) return `Their headline mentions <b>${esc(m[1])}</b>`;
-  if ((m = r.match(/^company matched "(.+)"$/))) return `They work at <b>${esc(l.company || m[1])}</b>`;
-  if ((m = r.match(/^title matched "(.+)"$/))) return `Their title says <b>${esc(m[1])}</b>`;
-  if ((m = r.match(/^title "(.+)" but employer matches/))) return `Title says <b>${esc(m[1])}</b>, but they work at a real company — your call`;
-  if ((m = r.match(/^member body "(.+)" outranks/))) return `Works at a member body`;
-  if (r.startsWith('set to ')) return `You moved them here`;
-  return esc(r);
-}
+// ---------------------------------------------------------------- paired campaigns
+//
+// One audience, two channels. This screen exists because neither platform can see
+// the other: the reply lands in one of them, and the other keeps going.
 
-function bucketOf(l){
-  if (['approved','pushed','push_failed'].includes(l.status)) return 'approved';
-  if (['rejected','already_in_outreach'].includes(l.status) || l.fit === 'exclude') return 'skipped';
-  return 'review';
-}
+let L = { pairs: [], open: null, detail: null, sl: [], kn: [] };
 
-// ---------------------------------------------------------------- render
-
-function summary(){
-  const n = { review:0, approved:0, skipped:0 };
-  for (const l of S.leads) n[bucketOf(l)]++;
-  const boxes = [
-    ['review','To go through', n.review],
-    ['approved','Approved', n.approved],
-    ['skipped','Skipped', n.skipped],
-  ];
-  $('sum').innerHTML = boxes.map(([k, label, v]) =>
-    `<button class="s-box ${S.tab === k ? 'active' : ''}" data-tab="${k}" style="text-align:left;cursor:pointer">
-       <div class="s-n">${v}</div><div class="s-l">${esc(label)}</div></button>`).join('');
-  $('tabs').innerHTML = boxes.map(([k, label, v]) =>
-    `<button class="tab ${S.tab === k ? 'on' : ''}" data-tab="${k}">${esc(label)}<span class="n">${v}</span></button>`).join('');
-}
-
-function personRow(l, showTick){
-  const initial = esc((l.name || '?').trim().charAt(0).toUpperCase());
-  const conn = l.is_connection
-    ? `<span class="mini m-conn">Already connected</span>`
-    : `<span class="mini m-inv">Needs an invite</span>`;
-  const copy = ['approved','pushed'].includes(l.status)
-    ? (l.connect_note && l.first_message
-        ? `<span class="mini m-copy">Message ready</span>`
-        : `<span class="mini m-nocopy">No message yet</span>`)
-    : '';
-  const pushed = l.status === 'pushed' ? `<span class="mini m-done">In campaign</span>` : '';
-  const role = [l.occupation, l.company].filter(Boolean).join(' · ');
-  const acts = !may('can_li_decide')
-    ? (l.profile_url ? `<a class="btn-quiet" href="${esc(l.profile_url)}" target="_blank" rel="noopener noreferrer">Profile</a>` : '')
-    : S.tab === 'review'
-      ? `<button class="btn-no" data-no="${l.id}">Skip</button>
-         <button class="btn-yes" data-yes="${l.id}">Approve</button>`
-      : `<button data-edit="${l.id}">${l.connect_note ? 'Edit message' : 'Write message'}</button>`;
+function pairRow(p){
+  const c = p.counts || {};
+  const chips = [
+    c.on_both ? `<span class="mini m-conn">${c.on_both} on both channels</span>` : `<span class="mini m-nocopy">not checked yet</span>`,
+    c.to_stop_email ? `<span class="mini m-copy">${c.to_stop_email} to stop on email</span>` : '',
+    c.to_pull_from_linkedin ? `<span class="mini m-nocopy">${c.to_pull_from_linkedin} to pull from LinkedIn</span>` : '',
+    c.stopped ? `<span class="mini m-done">${c.stopped} already stopped</span>` : '',
+  ].filter(Boolean).join(' ');
   return `<div class="person">
-    ${showTick ? `<input type="checkbox" class="tick" data-id="${l.id}" ${S.sel.has(l.id) ? 'checked' : ''}>` : ''}
-    <div class="av">${initial}</div>
     <div class="p-main">
-      <div class="p-name">${esc(l.name || 'Unknown')} ${conn} ${copy} ${pushed}</div>
-      <div class="p-role" title="${esc(role)}">${esc(role || '—')}</div>
-      <div class="p-why">${why(l)}${l.profile_url ? ` · <a href="${esc(l.profile_url)}" target="_blank" rel="noopener noreferrer">see profile</a>` : ''}</div>
+      <div class="p-name">${esc(p.label || p.sl_campaign_name || 'Pair')}</div>
+      <div class="p-role">${esc(p.sl_campaign_name || p.sl_campaign_id)} &nbsp;↔&nbsp; ${esc(p.kn_campaign_name || 'LinkedIn campaign')}</div>
+      <div class="p-why" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">${chips}</div>
     </div>
-    <div class="p-act">${acts}</div>
+    <div class="p-act"><button data-pair="${esc(p.id)}">Open</button></div>
   </div>`;
 }
 
-function people(){
-  const list = S.leads.filter(l => bucketOf(l) === S.tab);
-  if (!list.length) {
-    const txt = { review:['Nothing to go through', 'Load a post above and the people who engaged will show up here.'],
-                  approved:['No one approved yet', 'Approve people in the “To go through” tab first.'],
-                  skipped:['Nothing skipped', 'People you skip, and anyone already in a campaign, land here.'] }[S.tab];
-    $('people').innerHTML = `<div class="empty"><div class="empty-t">${esc(txt[0])}</div>${esc(txt[1])}</div>`;
-    $('bulk').classList.add('hide');
+function renderPairs(){
+  if (!L.pairs.length) {
+    $('pair-list').innerHTML = `<div class="empty"><div class="empty-t">No campaigns paired yet</div>
+      Pair an email campaign with the LinkedIn campaign that targets the same people,
+      and this screen will keep the two in step.</div>`;
     return;
   }
+  $('pair-list').innerHTML = L.pairs.map(pairRow).join('');
+}
 
-  if (S.tab === 'review') {
-    // group by fit so each block is one kind of person
-    const groups = GROUP_ORDER.filter(g => list.some(l => l.fit === g));
-    $('people').innerHTML = groups.map(g => {
-      const rows = list.filter(l => l.fit === g);
-      return `<div class="grp">
-          <div class="grp-t">${esc(GROUP[g])}</div>
-          <div class="grp-c">${rows.length} ${rows.length === 1 ? 'person' : 'people'}</div>
+async function loadPairs(){
+  const d = await eapi('/api/pairs');
+  L.pairs = d.pairs || [];
+  renderPairs();
+  if (L.open) { const still = L.pairs.some(p => p.id === L.open); if (!still) { L.open = null; $('pair-detail').innerHTML = ''; } }
+}
+
+function personLine(p){
+  return `<div class="prow">
+    <div class="pn">${esc(p.name || p.handle)}</div>
+    <div class="pe">${esc(p.email || '')}${p.company ? ' · ' + esc(p.company) : ''}</div>
+    <div class="px">${p.li_replied_at ? 'LinkedIn ' + esc(String(p.li_replied_at).slice(0,10)) : ''}
+      ${p.email_replied_at ? ' · email ' + esc(String(p.email_replied_at).slice(0,10)) : ''}</div>
+  </div>`;
+}
+
+function renderPair(d){
+  const c = d.counts || {};
+  const p = d.pair;
+  const stop = d.to_stop_email || [], pull = d.to_pull_from_linkedin || [];
+  const may = E.viewer?.can_pause || E.viewer?.is_admin;
+
+  $('pair-detail').innerHTML = `
+  <div class="card">
+    <div class="card-h bordered">
+      <div class="card-t">${esc(p.label || p.sl_campaign_name || 'Pair')}</div>
+      <div class="grow"></div>
+      <button id="pair-sync">${p.synced_at ? 'Check both channels again' : 'Check both channels'}</button>
+      ${E.viewer?.is_admin ? '<button class="btn-no" id="pair-del">Unpair</button>' : ''}
+    </div>
+    <div class="card-s" style="padding:0 18px 14px">
+      Email: <b>${esc(p.sl_campaign_name || p.sl_campaign_id)}</b> ·
+      LinkedIn: <b>${esc(p.kn_campaign_name || 'campaign')}</b>
+      ${p.synced_at ? ' · last checked ' + esc(new Date(p.synced_at).toLocaleString()) : ' · never checked'}
+    </div>
+    <div class="kpis" style="border-top:1px solid var(--line)">
+      <div class="kpi"><div class="v">${(c.on_both || 0).toLocaleString()}</div>
+        <div class="k">On both channels</div><div class="s">Matched on their LinkedIn handle</div></div>
+      <div class="kpi"><div class="v">${(c.replied_email || 0).toLocaleString()}</div>
+        <div class="k">Replied by email</div><div class="s">Anywhere in this campaign</div></div>
+      <div class="kpi"><div class="v">${(c.replied_linkedin || 0).toLocaleString()}</div>
+        <div class="k">Replied on LinkedIn</div><div class="s">Anywhere in this campaign</div></div>
+      <div class="kpi"><div class="v">${(c.stopped || 0).toLocaleString()}</div>
+        <div class="k">Already stopped</div><div class="s">We halted the second channel</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h bordered"><div class="step">1</div>
+      <div class="card-t">Replied on LinkedIn — stop emailing them</div></div>
+    <div class="card-b">
+      ${stop.length ? `<div class="row">
+          <span class="hint" style="margin:0">${stop.length} ${stop.length === 1 ? 'person' : 'people'}
+            answered on LinkedIn first and is still in the email campaign.</span>
           <div class="grow"></div>
-          ${may('can_li_decide') ? `<button class="btn-quiet" data-selgrp="${g}">Select all</button>` : ''}
-        </div>` + rows.map(l => personRow(l, may('can_li_decide'))).join('');
-    }).join('');
-  } else {
-    $('people').innerHTML = list.map(l => personRow(l, false)).join('');
-  }
-  bulk();
+          ${may ? '<button class="btn-primary" id="pair-stop">Stop their email</button>'
+                : '<span class="hint" style="margin:0">Stopping is not turned on for you.</span>'}
+        </div>` : '<div class="hint" style="margin:0">Nobody to stop right now.</div>'}
+    </div>
+    ${stop.length ? `<div class="plist">${stop.map(personLine).join('')}</div>` : ''}
+  </div>
+
+  <div class="card">
+    <div class="card-h bordered"><div class="step">2</div>
+      <div class="card-t">Replied to email — pull them out of LinkedIn</div></div>
+    <div class="card-b">
+      <div class="callout" style="margin-top:0"><b>This one has to be done by hand.</b>
+        The LinkedIn platform's API cannot pause, stop or remove a lead from a campaign —
+        there is no such endpoint. Open each person in the LinkedIn tool and remove them
+        from <b>${esc(p.kn_campaign_name || 'the campaign')}</b>.</div>
+      ${pull.length ? `<div class="hint">${pull.length} ${pull.length === 1 ? 'person' : 'people'}
+        answered by email first and is still being messaged on LinkedIn.</div>`
+        : '<div class="hint">Nobody to pull out right now.</div>'}
+    </div>
+    ${pull.length ? `<div class="plist">${pull.map(personLine).join('')}</div>` : ''}
+  </div>
+
+  ${c.on_both === 0 && p.synced_at ? `<div class="card"><div class="card-b">
+    <div class="callout" style="margin-top:0"><b>These two campaigns have nobody in common.</b>
+      ${(d.only_email || 0).toLocaleString()} people are only on email and
+      ${(d.only_linkedin || 0).toLocaleString()} are only on LinkedIn, matched on their
+      LinkedIn handle. Either they are different audiences, or the email list has no
+      LinkedIn handles on it — without a handle the two sides cannot be matched.</div>
+  </div></div>` : ''}`;
+
+  $('pair-sync').addEventListener('click', () => syncPair(p.id));
+  if ($('pair-del')) $('pair-del').addEventListener('click', () => unpair(p.id));
+  if ($('pair-stop')) $('pair-stop').addEventListener('click', () => stopEmails(p.id));
 }
 
-function bulk(){
-  const n = S.sel.size;
-  $('bulk').classList.toggle('hide', n === 0 || S.tab !== 'review');
-  $('bulk-n').textContent = `${n} selected`;
+async function openPair(id){
+  L.open = id;
+  showLoader('Opening the pair', ['Reading both channels…', 'Matching people…']);
+  try {
+    const d = await eapi('/api/pair?pair_id=' + encodeURIComponent(id));
+    L.detail = d; renderPair(d);
+    $('pair-detail').scrollIntoView({ behavior:'smooth', block:'start' });
+  } catch (e) { flash(scrub(e.message), 'err'); }
+  finally { hideLoader(); }
 }
 
-function draftState(){
-  const appr = S.leads.filter(l => bucketOf(l) === 'approved');
-  const ready = appr.filter(l => l.connect_note && l.first_message).length;
-  $('draft-all').disabled = appr.length === 0;
-  $('draft-state').textContent = appr.length === 0
-    ? 'Approve some people first.'
-    : `${ready} of ${appr.length} approved ${appr.length === 1 ? 'person has' : 'people have'} a message ready.`;
+async function syncPair(id){
+  showLoader('Checking both channels', [
+    'Pulling the email campaign…', 'Pulling the LinkedIn campaign…',
+    'Matching people on their handle…', 'Working out who replied first…']);
+  try {
+    const d = await eapi('/api/pairs/sync', { method:'POST', body:JSON.stringify({ pair_id:id }) });
+    flash(`${d.counts.on_both} of them are on both channels `
+      + `(${d.email_side.leads} on email, ${d.linkedin_side.members} on LinkedIn).`, 'ok');
+    await loadPairs(); await openPair(id);
+  } catch (e) { flash(scrub(e.message), 'err'); }
+  finally { hideLoader(); }
 }
 
-// ---------------------------------------------------------------- data
-
-async function load(){
-  const d = await api('/api/list?limit=300');
-  S.leads = d.leads || []; S.counts = d.counts || {}; S.viewer = d.viewer || null;
-  S.sel = new Set([...S.sel].filter(id => S.leads.some(l => l.id === id)));
-  $('who').textContent = S.viewer ? S.viewer.email : '';
-  applyLiRights();
-  summary(); people(); draftState();
+async function stopEmails(id){
+  const n = (L.detail?.to_stop_email || []).length;
+  if (!confirm(`Stop the email sequence for ${n} ${n === 1 ? 'person' : 'people'} who already answered on LinkedIn?`)) return;
+  showLoader('Stopping their email', ['Pausing each one…', 'Recording what happened…']);
+  try {
+    const d = await eapi('/api/pairs/stop-email', { method:'POST', body:JSON.stringify({ pair_id:id }) });
+    flash(`Stopped ${d.stopped} of ${d.attempted}.`
+      + (d.stopped < d.attempted ? ' The rest are listed with their error.' : ''), 'ok');
+    await loadPairs(); await openPair(id);
+  } catch (e) { flash(scrub(e.message), 'err'); }
+  finally { hideLoader(); }
 }
 
-// Someone may be allowed to look at the list without being allowed to bring
-// people in, decide, or write. Hide what they cannot do rather than let them
-// click it and collect a 403.
-const may = r => !!(S.viewer && (S.viewer.is_admin || S.viewer[r]));
+async function unpair(id){
+  if (!confirm('Unpair these two campaigns? Nothing is deleted in either platform.')) return;
+  try {
+    await eapi('/api/pairs/delete', { method:'POST', body:JSON.stringify({ pair_id:id }) });
+    L.open = null; $('pair-detail').innerHTML = '';
+    flash('Unpaired.', 'ok'); await loadPairs();
+  } catch (e) { flash(scrub(e.message), 'err'); }
+}
+
+async function openPairDlg(){
+  $('np-msg').textContent = 'Loading campaigns…';
+  $('np-save').disabled = true;
+  $('pair-dlg').showModal();
+  try {
+    const [sl, kn] = await Promise.all([eapi('/api/campaigns'), eapi('/api/kn-campaigns')]);
+    L.sl = sl.campaigns || []; L.kn = kn.campaigns || [];
+    $('np-sl').innerHTML = ['<option value="">Choose the email campaign…</option>']
+      .concat(L.sl.map(c => `<option value="${c.id}">${esc(c.name)}${c.status ? ' · ' + esc(c.status) : ''}</option>`)).join('');
+    $('np-kn').innerHTML = ['<option value="">Choose the LinkedIn campaign…</option>']
+      .concat(L.kn.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`)).join('');
+    $('np-msg').textContent = 'Pick the two campaigns that are working the same people.';
+    $('np-save').disabled = false;
+  } catch (e) { $('np-msg').textContent = scrub(e.message); }
+}
+
+async function savePair(){
+  const sl = $('np-sl').value, kn = $('np-kn').value;
+  if (!sl || !kn) { $('np-msg').textContent = 'Pick one campaign on each side.'; return; }
+  $('np-save').disabled = true;
+  try {
+    const d = await eapi('/api/pairs', { method:'POST', body:JSON.stringify({
+      sl_campaign_id: Number(sl), kn_campaign_id: kn,
+      sl_campaign_name: L.sl.find(c => String(c.id) === sl)?.name || null,
+      kn_campaign_name: L.kn.find(c => c.id === kn)?.name || null,
+      label: $('np-label').value.trim() || null })});
+    $('pair-dlg').close();
+    flash('Paired. Now check both channels to see who is on both.', 'ok');
+    await loadPairs();
+    if (d.id) await openPair(d.id);
+  } catch (e) { $('np-msg').textContent = scrub(e.message); }
+  finally { $('np-save').disabled = false; }
+}
 
 function applyLiRights(){
-  $('step1').classList.toggle('hide', !may('can_li_import'));
-  $('step3').classList.toggle('hide', !may('can_li_decide'));
-  $('tpl-btn').classList.toggle('hide', !may('can_linkedin'));
-  $('li-readonly').classList.toggle('hide', may('can_li_decide'));
+  $('pair-new').classList.toggle('hide', !E.viewer?.is_admin);
 }
 
-async function loadPostLists(){
-  try {
-    const d = await api('/api/kn/lists');
-    S.postLists = d.post_lists || [];
-    const mine = S.postLists.length;
-    $('kl-note').textContent = mine
-      ? `Watching ${mine} scraped post${mine === 1 ? '' : 's'}.`
-      : 'No scraped posts found yet.';
-  } catch (e) {
-    $('kl-note').textContent = 'Could not reach the outreach tool: ' + scrub(e.message);
-  }
-}
-
-// ---------------------------------------------------------------- actions
-
-async function decide(ids, action){
-  if (!ids.length) return;
-  const fit = $('refit').value || undefined;
-  try {
-    const d = await api('/api/decide', { method:'POST', body:JSON.stringify({ ids, action, fit }) });
-    const verb = action === 'approve' ? 'Approved' : 'Skipped';
-    flash(`${verb} ${d.affected}.` +
-      (d.affected < ids.length ? ` ${ids.length - d.affected} left alone — already in a campaign.` : ''), 'ok');
-    $('refit').value = ''; ids.forEach(i => S.sel.delete(i));
-    await load();
-  } catch (e) { flash(e.message, 'err'); }
-}
-
-async function draftAll(){
-  const ids = S.leads.filter(l => bucketOf(l) === 'approved').map(l => l.id);
-  if (!ids.length) return;
-  $('draft-all').disabled = true;
-  const label = $('draft-all').textContent;
-  $('draft-all').textContent = 'Writing…';
-  try {
-    const d = await api('/api/autodraft', { method:'POST', body:JSON.stringify({ ids }) });
-    flash(`Wrote messages for ${d.drafted} ${d.drafted === 1 ? 'person' : 'people'}.`, 'ok');
-    await load();
-  } catch (e) { flash(e.message, 'err'); }
-  finally { $('draft-all').textContent = label; draftState(); }
-}
-
-// The outreach tool's API cannot scrape a post, so this asks it what has been
-// scraped and brings in anything new. Same work the hourly job does.
-async function discover(){
-  const btn = $('discover');
-  const label = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Checking…';
-  showLoader('Checking for new posts', [
-    'Asking the outreach tool…', 'Looking for posts we have not seen…',
-    'Bringing in the people…', 'Writing their messages…']);
-  try {
-    const d = await api('/api/discover', { method: 'POST', body: '{}' });
-    const n = d.brought_in || 0;
-    flash(n
-      ? `Brought in ${n} new ${n === 1 ? 'person' : 'people'} from `
-        + `${d.posts_pulled} post${d.posts_pulled === 1 ? '' : 's'}.`
-      : 'Nothing new since the last check.', 'ok');
-    // Say what was left out rather than let a zero look like "no posts exist".
-    const bits = [];
-    if (d.post_lists_seen != null) bits.push(`${d.post_lists_seen} scraped posts in the outreach tool`);
-    if (d.already_have) bits.push(`${d.already_have} already brought in`);
-    if (d.skipped_other_sender) bits.push(`${d.skipped_other_sender} belong to another sending profile`);
-    if (d.skipped_empty) bits.push(`${d.skipped_empty} have nothing scraped yet`);
-    $('kl-note').textContent = bits.join(' · ');
-    $('kl-warn').innerHTML = d.errors
-      ? `<div class="callout"><b>${d.errors} post${d.errors === 1 ? '' : 's'} could not be read.</b> `
-        + 'Try again in a minute.</div>'
-      : '';
-    await load();
-  } catch (e) {
-    $('kl-warn').innerHTML = `<div class="callout"><b>Could not check.</b> ${esc(scrub(e.message))}</div>`;
-  } finally {
-    btn.disabled = false; btn.textContent = label; hideLoader();
-  }
-}
-
-// Kept for the agent API only: pulling one named post is still occasionally useful
-// when a scrape finished after the last check. Nothing in the UI calls it.
-async function pullOne(id){
-  const chosen = (S.postLists || []).find(l => l.id === id);
-  const d = await api('/api/kn/pull', { method:'POST', body:JSON.stringify({
-    lead_list_id:id, label:chosen?.name || 'post', post_url:chosen?.post_url || null }) });
-  await load();
-  return d;
-}
-
-// ---------------------------------------------------------------- editor
-
-let editing = null;
-function openLead(id){
-  const l = S.leads.find(x => x.id === id); if (!l) return;
-  editing = l;
-  $('ld-name').textContent = l.name || 'Person';
-  $('ld-meta').innerHTML = [
-    l.occupation ? esc(l.occupation) : '',
-    l.company ? '<b>' + esc(l.company) + '</b>' : '',
-    l.location ? esc(l.location) : '',
-    l.is_connection ? 'Already connected' : 'Needs an invite',
-    l.profile_url ? `<a href="${esc(l.profile_url)}" target="_blank" rel="noopener noreferrer">see profile</a>` : ''
-  ].filter(Boolean).join(' · ');
-  $('ld-about').innerHTML = l.about_snippet ? `<b>From their profile:</b> ${esc(l.about_snippet)}` : '';
-  $('ld-note').value = l.connect_note || '';
-  $('ld-msg').value = l.first_message || '';
-  count(); $('lead-dlg').showModal();
-}
-function count(){
-  const n = $('ld-note').value.length;
-  $('ld-count').textContent = n > 290
-    ? `${n} characters — LinkedIn only allows 290, so this will be trimmed`
-    : `${n} of 290 characters`;
-  $('ld-count').style.color = n > 290 ? 'var(--red)' : 'var(--ink2)';
-}
-async function saveLead(){
-  if (!editing) return;
-  try {
-    await api('/api/draft', { method:'POST', body:JSON.stringify({
-      id:editing.id, connect_note:$('ld-note').value, first_message:$('ld-msg').value }) });
-    $('lead-dlg').close(); flash('Saved.', 'ok'); await load();
-  } catch (e) { flash(e.message, 'err'); }
-}
-
-async function openTemplates(){
-  try {
-    const d = await api('/api/templates');
-    S.templates = d.templates || {}; fillTpl();
-    $('tp-note2').textContent = may('can_li_templates')
-      ? '' : 'You can read these, but changing them is not turned on for you.';
-    $('tp-save').disabled = !may('can_li_templates');
-    $('tpl-dlg').showModal();
-  } catch (e) { flash(e.message, 'err'); }
-}
-function fillTpl(){
-  const t = S.templates[$('tp-fit').value] || { connect_note:'', first_message:'' };
-  $('tp-note').value = t.connect_note; $('tp-msg').value = t.first_message;
-}
-async function saveTpl(){
-  try {
-    const d = await api('/api/templates', { method:'POST', body:JSON.stringify({
-      fit:$('tp-fit').value, connect_note:$('tp-note').value, first_message:$('tp-msg').value }) });
-    S.templates = d.templates || {};
-    flash('Template saved. Use step 3 to apply it.', 'ok');
-  } catch (e) { flash(e.message, 'err'); }
-}
+$('pair-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-pair]'); if (b) openPair(b.dataset.pair);
+});
+$('pair-new').addEventListener('click', openPairDlg);
+$('np-save').addEventListener('click', savePair);
+$('np-cancel').addEventListener('click', () => $('pair-dlg').close());
+$('np-x').addEventListener('click', () => $('pair-dlg').close());
 
 // ---------------------------------------------------------------- events
 
-function switchTab(t){ S.tab = t; S.sel.clear(); summary(); people(); }
-$('sum').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) switchTab(b.dataset.tab); });
-$('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) switchTab(b.dataset.tab); });
 
-$('people').addEventListener('click', e => {
-  const t = e.target;
-  const tick = t.closest('.tick');
-  if (tick) { tick.checked ? S.sel.add(tick.dataset.id) : S.sel.delete(tick.dataset.id); bulk(); return; }
-  const grp = t.closest('[data-selgrp]');
-  if (grp) {
-    S.leads.filter(l => bucketOf(l) === 'review' && l.fit === grp.dataset.selgrp).forEach(l => S.sel.add(l.id));
-    people(); return;
-  }
-  const yes = t.closest('[data-yes]'); if (yes) return void decide([yes.dataset.yes], 'approve');
-  const no  = t.closest('[data-no]');  if (no)  return void decide([no.dataset.no], 'reject');
-  const ed  = t.closest('[data-edit]'); if (ed) openLead(ed.dataset.edit);
-});
 
-$('app-btn').addEventListener('click', () => decide([...S.sel], 'approve'));
-$('rej-btn').addEventListener('click', () => decide([...S.sel], 'reject'));
-$('draft-all').addEventListener('click', draftAll);
-$('discover').addEventListener('click', discover);
 $('refresh').addEventListener('click', async () => {
   showLoader('Refreshing', ['Fetching the latest\u2026', 'Nearly done\u2026']);
-  try { await load(); } catch (e) { flash(e.message, 'err'); } finally { hideLoader(); }
+  try { await loadPairs(); } catch (e) { flash(scrub(e.message), 'err'); } finally { hideLoader(); }
 });
-$('tpl-btn').addEventListener('click', openTemplates);
-$('tp-fit').addEventListener('change', fillTpl);
-$('tp-save').addEventListener('click', saveTpl);
-$('tp-cancel').addEventListener('click', () => $('tpl-dlg').close());
-$('tp-x').addEventListener('click', () => $('tpl-dlg').close());
-$('ld-note').addEventListener('input', count);
-$('ld-save').addEventListener('click', saveLead);
-$('ld-cancel').addEventListener('click', () => $('lead-dlg').close());
-$('ld-x').addEventListener('click', () => $('lead-dlg').close());
 $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
 $('denied-out').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
 
@@ -1945,10 +1767,10 @@ $('load-only').addEventListener('click', () => launch(false));
 
   // Someone may have cold-email access without LinkedIn access, or the reverse.
   // Ask both, and only refuse if neither will have them.
-  let okLinkedIn = false;
-  try { await load(); okLinkedIn = true; } catch (_) { /* no LinkedIn access */ }
-  try { await loadEmail(true); } catch (_) { /* no email access */ }
-  const okEmail = !!E.loaded;
+  try { await loadEmail(true); } catch (_) { /* no engine access at all */ }
+  const okEmail = !!(E.viewer?.can_email || E.viewer?.is_admin);
+  const okLinkedIn = !!(E.viewer?.can_linkedin || E.viewer?.is_admin);
+  if (okLinkedIn) { try { await loadPairs(); } catch (_) { /* shown empty */ } }
 
   if (!okLinkedIn && !okEmail) {
     $('denied-email').textContent = (await sb.auth.getSession()).data?.session?.user?.email ?? '';
@@ -1961,8 +1783,8 @@ $('load-only').addEventListener('click', () => launch(false));
   $('tab-results').classList.toggle('hide', !(E.viewer?.can_analytics || E.viewer?.is_admin));
 
   show('app');
+  applyLiRights();
   switchView(okLinkedIn ? 'linkedin' : 'email');
-  if (okLinkedIn) loadPostLists();
 })();
 </script>
 </body>
