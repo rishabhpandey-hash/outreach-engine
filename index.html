@@ -300,10 +300,14 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
     </div>
     <div class="card-b">
       <div class="row">
-        <select id="kl" style="flex:1;min-width:240px"><option value="">Loading posts…</option></select>
+        <input id="kl-url" placeholder="Paste the LinkedIn post link" style="flex:1;min-width:260px">
         <button class="btn-primary" id="pull">Load these people</button>
       </div>
       <div class="hint" id="kl-note">Nothing is sent to anyone. They just land in the list below for you to go through.</div>
+      <details id="kl-alt" style="margin-top:12px">
+        <summary>Or pick a post we already have</summary>
+        <select id="kl" style="margin-top:10px"><option value="">Loading posts…</option></select>
+      </details>
     </div>
   </div>
 
@@ -800,14 +804,66 @@ async function loadPostLists(){
       $('kl-note').textContent = 'No post engagement lists yet. Scrape a post’s engagers first, then come back.';
       return;
     }
-    $('kl').innerHTML = S.postLists.map(l => {
-      const n = l.engagers ?? '?';
-      return `<option value="${esc(l.id)}">${esc((l.name || 'post').slice(0, 46))} — ${n} ${n === 1 ? 'person' : 'people'}</option>`;
-    }).join('');
+    $('kl').innerHTML = ['<option value="">Choose a post…</option>'].concat(
+      S.postLists.map(l => {
+        const n = l.engagers ?? '?';
+        const when = l.created_at ? new Date(l.created_at).toLocaleDateString() : '';
+        return `<option value="${esc(l.id)}">${esc((l.name || 'post').slice(0, 46))}`
+          + ` — ${n} ${n === 1 ? 'person' : 'people'}${when ? ' · ' + esc(when) : ''}</option>`;
+      })).join('');
+    $('kl-note').textContent = `${S.postLists.length} post${S.postLists.length === 1 ? '' : 's'} `
+      + 'already brought in. Paste a link, or pick one below.';
   } catch (e) {
     $('kl').innerHTML = '<option value="">Could not load posts</option>';
     $('kl-note').textContent = 'Could not reach the post list: ' + e.message;
   }
+}
+
+// A LinkedIn post link and the copy of it we hold are never character-identical
+// (tracking parameters, /feed/update/urn:li:activity: vs /posts/slug-activity-),
+// but both carry the same numeric post id. Match on that.
+function postId(u){
+  const m = String(u || '').match(/\d{15,25}/);
+  return m ? m[0] : null;
+}
+
+function matchPost(url){
+  const id = postId(url);
+  if (!id) return null;
+  return (S.postLists || []).find(l => postId(l.post_url) === id
+    || (l.post_url && String(l.post_url).trim() === String(url).trim())) || null;
+}
+
+// We cannot scrape a post from here: the outreach tool's API has no endpoint that
+// turns a post link into people. So a pasted link is looked up among the posts it
+// has already scraped, and if it is not there we say exactly that.
+function resolvePasted(){
+  const raw = $('kl-url').value.trim();
+  const note = $('kl-note');
+  if (!raw) {
+    $('kl').value = '';
+    note.textContent = `${(S.postLists || []).length} posts already brought in. `
+      + 'Paste a link, or pick one below.';
+    return;
+  }
+  const hit = matchPost(raw);
+  if (hit) {
+    $('kl').value = hit.id;
+    const n = hit.engagers ?? 0;
+    note.innerHTML = `Found <b>${esc(hit.name || 'this post')}</b> — ${n} `
+      + `${n === 1 ? 'person' : 'people'} liked or commented on it. `
+      + 'Click "Load these people" to bring them in.';
+    return;
+  }
+  $('kl').value = '';
+  if (!/linkedin\.com/i.test(raw)) {
+    note.textContent = 'That does not look like a LinkedIn post link.';
+    return;
+  }
+  note.innerHTML = 'We do not have this post yet, and it cannot be fetched from here — '
+    + 'scraping a post has to be done in the outreach tool itself. '
+    + 'Scrape this post there, then paste the link again. '
+    + 'Anything already scraped is in the list below.';
 }
 
 // ---------------------------------------------------------------- actions
@@ -841,7 +897,7 @@ async function draftAll(){
 
 async function pull(){
   const id = $('kl').value;
-  if (!id) { flash('Pick a post first.', 'err'); return; }
+  if (!id) { flash('Paste a post link first, or pick a post below.', 'err'); return; }
   const chosen = S.postLists.find(l => l.id === id);
   $('pull').disabled = true; $('pull').textContent = 'Loading…';
   try {
@@ -936,6 +992,20 @@ $('app-btn').addEventListener('click', () => decide([...S.sel], 'approve'));
 $('rej-btn').addEventListener('click', () => decide([...S.sel], 'reject'));
 $('draft-all').addEventListener('click', draftAll);
 $('pull').addEventListener('click', pull);
+$('kl-url').addEventListener('input', resolvePasted);
+$('kl-url').addEventListener('paste', () => setTimeout(resolvePasted, 0));
+// picking from the fallback list should clear a pasted link, so only one wins
+$('kl').addEventListener('change', () => {
+  const chosen = $('kl').value;
+  if (!chosen) return;
+  $('kl-url').value = '';
+  const l = (S.postLists || []).find(x => x.id === chosen);
+  const n = l?.engagers ?? 0;
+  $('kl-note').innerHTML = l
+    ? `Chose <b>${esc(l.name || 'this post')}</b> — ${n} ${n === 1 ? 'person' : 'people'} `
+      + 'liked or commented on it. Click "Load these people" to bring them in.'
+    : 'Click "Load these people" to bring them in.';
+});
 $('refresh').addEventListener('click', async () => {
   showLoader('Refreshing', ['Fetching the latest\u2026', 'Nearly done\u2026']);
   try { await load(); } catch (e) { flash(e.message, 'err'); } finally { hideLoader(); }
