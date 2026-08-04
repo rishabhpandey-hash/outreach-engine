@@ -315,7 +315,8 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
       </div>
       <div class="row" style="margin-top:12px">
         <button id="load-only">Load copy only</button>
-        <button class="btn-primary" id="launch">Load and start sending</button>
+        <button class="btn-no hide" id="pause-camp">Stop this campaign</button>
+      <button class="btn-primary" id="launch">Load and start sending</button>
         <span class="hint" style="margin:0" id="launch-note"></span>
       </div>
       <div class="hint" id="camp-note"></div>
@@ -338,6 +339,18 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
     <div class="card-s" style="padding:0 18px 14px">Give each person only what they need.
       Access here does not give anyone the client reply inbox or the LinkedIn side.</div>
     <div class="card-b flush" id="user-list"></div>
+  </div>
+  <div class="card">
+    <div class="card-h bordered"><div class="card-t">Email sending</div></div>
+    <div class="card-b">
+      <div class="row">
+        <span id="send-state" class="mini">checking…</span>
+        <div class="grow"></div>
+        <button id="send-toggle">Loading…</button>
+      </div>
+      <div class="hint">Master switch. When this is off, copy can still be loaded into a
+        campaign but nothing will send, no matter who clicks what.</div>
+    </div>
   </div>
 </div>
 </div>
@@ -775,7 +788,9 @@ async function eapi(path, opts = {}){
   let b = null; try { b = await res.json(); } catch (_) {}
   if (res.status === 401) { show('login'); throw new Error('no session'); }
   if (!res.ok || b?.ok === false) {
-    throw new Error(b?.detail || b?.error || ('HTTP ' + res.status));
+    const e = new Error(b?.detail || b?.error || ('HTTP ' + res.status));
+    e.code = b?.error; e.info = b;
+    throw e;
   }
   return b;
 }
@@ -833,6 +848,7 @@ async function loadEmail(force){
     E.viewer = d.viewer || {};
     $('new-tpl').classList.toggle('hide', !E.viewer.can_edit_templates);
     $('launch').classList.toggle('hide', !E.viewer.can_launch);
+    $('pause-camp').classList.toggle('hide', !E.viewer.can_pause);
     $('send-warn').classList.toggle('hide', E.sending);
     $('launch').disabled = !E.sending;
     $('launch-note').textContent = E.sending ? '' : 'Turned off while we build.';
@@ -906,8 +922,21 @@ async function launch(start){
   const btn = start ? $('launch') : $('load-only');
   const label = btn.textContent; btn.disabled = true; btn.textContent = 'Working…';
   try {
-    const d = await eapi('/api/launch', { method:'POST', body:JSON.stringify({
-      template_id, campaign_id: Number(campaign_id), campaign_name: camp?.name, start }) });
+    let d;
+    try {
+      d = await eapi('/api/launch', { method:'POST', body:JSON.stringify({
+        template_id, campaign_id: Number(campaign_id), campaign_name: camp?.name, start }) });
+    } catch (e1) {
+      if (e1.code !== 'campaign_already_has_copy') throw e1;
+      const subs = (e1.info?.existing_subjects || []).map(x => '  • ' + x).join('\n');
+      const ok = confirm(
+        `"${camp?.name}" already has ${e1.info?.existing_steps} email step(s):\n\n${subs}\n\n` +
+        `Loading "${tpl?.name}" will REPLACE all of them. Continue?`);
+      if (!ok) { eflash('Left the campaign as it was.', 'ok'); return; }
+      d = await eapi('/api/launch', { method:'POST', body:JSON.stringify({
+        template_id, campaign_id: Number(campaign_id), campaign_name: camp?.name,
+        start, overwrite: true }) });
+    }
     eflash(d.started ? `Copy loaded and "${camp?.name}" is now sending.`
                      : `Copy loaded into "${camp?.name}". Not started.`, 'ok');
     await loadEmail(true);
@@ -923,7 +952,7 @@ function switchView(v){
   $('view-people').classList.toggle('hide', v !== 'people');
   $('tpl-btn').classList.toggle('hide', v !== 'linkedin');
   if (v === 'email') loadEmail(false);
-  if (v === 'people') loadUsers();
+  if (v === 'people') { loadUsers(); loadSendState(); }
 }
 $('views').addEventListener('click', e => {
   const b = e.target.closest('[data-view]'); if (!b) return;
@@ -1028,6 +1057,51 @@ $('et-save').addEventListener('click', saveTpl2);
 $('et-del').addEventListener('click', delTpl);
 $('et-cancel').addEventListener('click', () => $('etpl-dlg').close());
 $('et-x').addEventListener('click', () => $('etpl-dlg').close());
+async function pauseCampaign(){
+  const campaign_id = $('pick-camp').value;
+  if (!campaign_id) { eflash('Pick the campaign you want to stop.', 'err'); return; }
+  const camp = E.campaigns.find(c => String(c.id) === String(campaign_id));
+  if (!confirm(`Stop "${camp?.name}"?\n\nIt stops sending immediately. You can start it again later.`)) return;
+  try {
+    await eapi('/api/pause', { method:'POST', body:JSON.stringify({
+      campaign_id: Number(campaign_id), campaign_name: camp?.name }) });
+    eflash(`"${camp?.name}" is stopped.`, 'ok');
+    await loadEmail(true);
+  } catch (e) { eflash(e.message, 'err'); }
+}
+
+async function loadSendState(){
+  try {
+    const d = await eapi('/api/settings');
+    paintSendState(!!d.email_sending_enabled);
+  } catch (e) {
+    $('send-state').textContent = 'unknown';
+    $('send-toggle').textContent = '—'; $('send-toggle').disabled = true;
+  }
+}
+function paintSendState(on){
+  E.sending = on;
+  $('send-state').textContent = on ? 'Sending is ON' : 'Sending is OFF';
+  $('send-state').className = 'mini ' + (on ? 'm-copy' : 'm-nocopy');
+  $('send-toggle').textContent = on ? 'Turn sending off' : 'Turn sending on';
+  $('send-toggle').disabled = false;
+  $('send-toggle').className = on ? 'btn-no' : 'btn-primary';
+}
+async function toggleSending(){
+  const next = !E.sending;
+  if (next && !confirm('Turn email sending ON?\n\nAfter this, starting a campaign will send real emails.')) return;
+  $('send-toggle').disabled = true;
+  try {
+    const d = await eapi('/api/settings', { method:'POST',
+      body:JSON.stringify({ email_sending_enabled: next }) });
+    paintSendState(!!d.email_sending_enabled);
+    pflash(d.email_sending_enabled ? 'Sending is on.' : 'Sending is off. Nothing can send now.', 'ok');
+    E.loaded = false;
+  } catch (e) { pflash(e.message, 'err'); $('send-toggle').disabled = false; }
+}
+
+$('pause-camp').addEventListener('click', pauseCampaign);
+$('send-toggle').addEventListener('click', toggleSending);
 $('launch').addEventListener('click', () => launch(true));
 $('load-only').addEventListener('click', () => launch(false));
 
