@@ -71,6 +71,7 @@ header{background:var(--white);border-bottom:1px solid var(--line);
 
 /* ---------- summary ---------- */
 .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+#r-tiles{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 @media (max-width:640px){.sum{grid-template-columns:1fr}}
 .s-box{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px}
 .s-box.active{border-color:var(--purple);box-shadow:0 0 0 3px var(--purple-soft)}
