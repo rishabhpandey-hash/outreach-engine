@@ -587,7 +587,9 @@ let L = { pairs: [], open: null, detail: null, sl: [], kn: [] };
 function pairRow(p){
   const c = p.counts || {};
   const chips = [
-    c.on_both ? `<span class="mini m-conn">${c.on_both} on both channels</span>` : `<span class="mini m-nocopy">not checked yet</span>`,
+    c.on_both ? `<span class="mini m-conn">${c.on_both.toLocaleString()} on both channels</span>`
+      : p.synced_at ? `<span class="mini m-nocopy">nobody in common</span>`
+      : `<span class="mini m-inv">not checked yet</span>`,
     c.to_stop_email ? `<span class="mini m-copy">${c.to_stop_email} to stop on email</span>` : '',
     c.to_pull_from_linkedin ? `<span class="mini m-nocopy">${c.to_pull_from_linkedin} to pull from LinkedIn</span>` : '',
     c.stopped ? `<span class="mini m-done">${c.stopped} already stopped</span>` : '',
