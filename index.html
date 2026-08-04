@@ -301,20 +301,16 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <div class="card" id="step1">
     <div class="card-h">
       <div class="step">1</div>
-      <div class="card-t">Bring in people who engaged with a post</div>
-      <div class="card-s">Paste the link to a LinkedIn post. We'll load everyone who liked or commented on it, and skip anyone we're already talking to.</div>
+      <div class="card-t">People who engaged with your posts</div>
+      <div class="card-s">Scrape a post in the outreach tool. Everyone who liked or commented on it
+        turns up here on its own, minus anyone we are already talking to. There is nothing to pick.</div>
     </div>
     <div class="card-b">
       <div class="row">
-        <input id="kl-url" placeholder="Paste the LinkedIn post link" style="flex:1;min-width:260px">
-        <button class="btn-primary" id="pull">Load these people</button>
+        <button class="btn-primary" id="discover">Check for new posts</button>
+        <span class="hint" style="margin:0" id="kl-note">Checking…</span>
       </div>
-      <div class="hint" id="kl-note">Nothing is sent to anyone. They just land in the list below for you to go through.</div>
       <div id="kl-warn"></div>
-      <details id="kl-alt" style="margin-top:12px">
-        <summary>Or pick a post we already have</summary>
-        <select id="kl" style="margin-top:10px"><option value="">Loading posts…</option></select>
-      </details>
     </div>
   </div>
 
@@ -803,99 +799,16 @@ function applyLiRights(){
 }
 
 async function loadPostLists(){
-  setPullReady(false);
   try {
     const d = await api('/api/kn/lists');
     S.postLists = d.post_lists || [];
-    if (!S.postLists.length) {
-      $('kl').innerHTML = '<option value="">No posts found</option>';
-      $('kl-note').textContent = 'No post engagement lists yet. Scrape a post’s engagers first, then come back.';
-      return;
-    }
-    $('kl').innerHTML = ['<option value="">Choose a post…</option>'].concat(
-      S.postLists.map(l => {
-        const n = l.engagers ?? '?';
-        const when = l.created_at ? new Date(l.created_at).toLocaleDateString() : '';
-        return `<option value="${esc(l.id)}">${esc((l.name || 'post').slice(0, 46))}`
-          + ` — ${n} ${n === 1 ? 'person' : 'people'}${when ? ' · ' + esc(when) : ''}</option>`;
-      })).join('');
-    $('kl-note').textContent = `${S.postLists.length} post${S.postLists.length === 1 ? '' : 's'} `
-      + 'already brought in. Paste a link, or pick one below.';
+    const mine = S.postLists.length;
+    $('kl-note').textContent = mine
+      ? `Watching ${mine} scraped post${mine === 1 ? '' : 's'}.`
+      : 'No scraped posts found yet.';
   } catch (e) {
-    $('kl').innerHTML = '<option value="">Could not load posts</option>';
-    $('kl-note').textContent = 'Could not reach the post list: ' + e.message;
+    $('kl-note').textContent = 'Could not reach the outreach tool: ' + scrub(e.message);
   }
-}
-
-// A LinkedIn post link and the copy of it we hold are never character-identical
-// (tracking parameters, /feed/update/urn:li:activity: vs /posts/slug-activity-),
-// but both carry the same numeric post id. Match on that.
-function postId(u){
-  const m = String(u || '').match(/\d{15,25}/);
-  return m ? m[0] : null;
-}
-
-function matchPost(url){
-  const id = postId(url);
-  if (!id) return null;
-  return (S.postLists || []).find(l => postId(l.post_url) === id
-    || (l.post_url && String(l.post_url).trim() === String(url).trim())) || null;
-}
-
-// We cannot scrape a post from here: the outreach tool's API has no endpoint that
-// turns a post link into people. So a pasted link is looked up among the posts it
-// has already scraped, and if it is not there we say exactly that.
-// The button is only live when there is actually a post to load, so clicking it
-// can never look like it did nothing.
-function setPullReady(ready){
-  $('pull').disabled = !ready;
-  $('pull').title = ready ? '' : 'Paste a link to a post we already have, or pick one below';
-}
-
-function resolvePasted(){
-  const raw = $('kl-url').value.trim();
-  const note = $('kl-note');
-  const warn = $('kl-warn');
-  warn.innerHTML = '';
-  if (!raw) {
-    $('kl').value = '';
-    setPullReady(false);
-    note.textContent = `${(S.postLists || []).length} posts already brought in. `
-      + 'Paste a link, or pick one below.';
-    return;
-  }
-  const hit = matchPost(raw);
-  if (hit) {
-    $('kl').value = hit.id;
-    setPullReady(true);
-    const n = hit.engagers ?? 0;
-    note.innerHTML = `Found <b>${esc(hit.name || 'this post')}</b> — ${n} `
-      + `${n === 1 ? 'person' : 'people'} liked or commented on it. `
-      + 'Click "Load these people" to bring them in.';
-    return;
-  }
-  $('kl').value = '';
-  setPullReady(false);
-  if (!/linkedin\.com/i.test(raw)) {
-    note.textContent = '';
-    warn.innerHTML = '<div class="callout"><b>That is not a LinkedIn post link.</b> '
-      + 'Open the post on LinkedIn, copy its link, and paste it here.</div>';
-    return;
-  }
-  // Say what has to happen, where, and in what order. This tool cannot scrape a
-  // post: the outreach platform's API has no endpoint that turns a post link
-  // into people, so the scrape has to be started in that platform.
-  const id = postId(raw);
-  note.textContent = '';
-  warn.innerHTML = `<div class="callout">
-    <b>We do not have this post yet.</b> This screen can only load a post that has
-    already been scraped, and starting a scrape is not something it can do.
-    <ol>
-      <li>Open the outreach tool and make a new lead list.</li>
-      <li>Choose <b>post likes</b> (and a second list for <b>post comments</b> if you want those too).</li>
-      <li>Paste this post link there${id ? ` — post <span class="mono">${esc(id)}</span>` : ''} and let it finish.</li>
-      <li>Come back, paste the same link here, and it will be found.</li>
-    </ol></div>`;
 }
 
 // ---------------------------------------------------------------- actions
@@ -927,19 +840,49 @@ async function draftAll(){
   finally { $('draft-all').textContent = label; draftState(); }
 }
 
-async function pull(){
-  const id = $('kl').value;
-  if (!id) { flash('Paste a post link first, or pick a post below.', 'err'); return; }
-  const chosen = S.postLists.find(l => l.id === id);
-  $('pull').disabled = true; $('pull').textContent = 'Loading…';
+// The outreach tool's API cannot scrape a post, so this asks it what has been
+// scraped and brings in anything new. Same work the hourly job does.
+async function discover(){
+  const btn = $('discover');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Checking…';
+  showLoader('Checking for new posts', [
+    'Asking the outreach tool…', 'Looking for posts we have not seen…',
+    'Bringing in the people…', 'Writing their messages…']);
   try {
-    const d = await api('/api/kn/pull', { method:'POST', body:JSON.stringify({
-      lead_list_id:id, label:chosen?.name || 'post', post_url:chosen?.post_url || null }) });
-    flash(`Brought in ${d.inserted} new ${d.inserted === 1 ? 'person' : 'people'}` +
-      (d.skipped_duplicates ? `, skipped ${d.skipped_duplicates} we already had.` : '.'), 'ok');
-    S.tab = 'review'; await load();
-  } catch (e) { flash(e.message, 'err'); }
-  finally { $('pull').disabled = false; $('pull').textContent = 'Load these people'; }
+    const d = await api('/api/discover', { method: 'POST', body: '{}' });
+    const n = d.brought_in || 0;
+    flash(n
+      ? `Brought in ${n} new ${n === 1 ? 'person' : 'people'} from `
+        + `${d.posts_pulled} post${d.posts_pulled === 1 ? '' : 's'}.`
+      : 'Nothing new since the last check.', 'ok');
+    // Say what was left out rather than let a zero look like "no posts exist".
+    const bits = [];
+    if (d.post_lists_seen != null) bits.push(`${d.post_lists_seen} scraped posts in the outreach tool`);
+    if (d.already_have) bits.push(`${d.already_have} already brought in`);
+    if (d.skipped_other_sender) bits.push(`${d.skipped_other_sender} belong to another sending profile`);
+    if (d.skipped_empty) bits.push(`${d.skipped_empty} have nothing scraped yet`);
+    $('kl-note').textContent = bits.join(' · ');
+    $('kl-warn').innerHTML = d.errors
+      ? `<div class="callout"><b>${d.errors} post${d.errors === 1 ? '' : 's'} could not be read.</b> `
+        + 'Try again in a minute.</div>'
+      : '';
+    await load();
+  } catch (e) {
+    $('kl-warn').innerHTML = `<div class="callout"><b>Could not check.</b> ${esc(scrub(e.message))}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = label; hideLoader();
+  }
+}
+
+// Kept for the agent API only: pulling one named post is still occasionally useful
+// when a scrape finished after the last check. Nothing in the UI calls it.
+async function pullOne(id){
+  const chosen = (S.postLists || []).find(l => l.id === id);
+  const d = await api('/api/kn/pull', { method:'POST', body:JSON.stringify({
+    lead_list_id:id, label:chosen?.name || 'post', post_url:chosen?.post_url || null }) });
+  await load();
+  return d;
 }
 
 // ---------------------------------------------------------------- editor
@@ -1023,23 +966,7 @@ $('people').addEventListener('click', e => {
 $('app-btn').addEventListener('click', () => decide([...S.sel], 'approve'));
 $('rej-btn').addEventListener('click', () => decide([...S.sel], 'reject'));
 $('draft-all').addEventListener('click', draftAll);
-$('pull').addEventListener('click', pull);
-$('kl-url').addEventListener('input', resolvePasted);
-$('kl-url').addEventListener('paste', () => setTimeout(resolvePasted, 0));
-// picking from the fallback list should clear a pasted link, so only one wins
-$('kl').addEventListener('change', () => {
-  const chosen = $('kl').value;
-  if (!chosen) return;
-  $('kl-url').value = '';
-  $('kl-warn').innerHTML = '';
-  setPullReady(true);
-  const l = (S.postLists || []).find(x => x.id === chosen);
-  const n = l?.engagers ?? 0;
-  $('kl-note').innerHTML = l
-    ? `Chose <b>${esc(l.name || 'this post')}</b> — ${n} ${n === 1 ? 'person' : 'people'} `
-      + 'liked or commented on it. Click "Load these people" to bring them in.'
-    : 'Click "Load these people" to bring them in.';
-});
+$('discover').addEventListener('click', discover);
 $('refresh').addEventListener('click', async () => {
   showLoader('Refreshing', ['Fetching the latest\u2026', 'Nearly done\u2026']);
   try { await load(); } catch (e) { flash(e.message, 'err'); } finally { hideLoader(); }
