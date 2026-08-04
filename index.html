@@ -1240,7 +1240,7 @@ async function loadResults(force){
       [t.people_contacted, 'People emailed', 'Each person counted once, however many emails they were sent.'],
       [t.replies, 'Replied', t.reply_one_in ? `About 1 in every ${t.reply_one_in} people wrote back.` : 'Nobody has replied yet.'],
       [t.interested, 'Marked interested', 'Replies the team tagged as a real opportunity.'],
-      [t.bounces, "Couldn't be delivered", t.bounce_rate != null ? `${t.bounce_rate}% of everyone emailed. Under 3% is healthy.` : ''],
+      [t.bounces, "Couldn't be delivered", t.bounce_rate == null ? '' : `${t.bounce_rate}% of everyone emailed — ` + (t.bounce_rate < 3 ? 'healthy.' : t.bounce_rate < 5 ? 'on the high side.' : 'too high, the list needs cleaning.')],
     ];
     $('r-tiles').innerHTML = tiles.map(([v, l, h]) => `
       <div class="s-box"><div class="s-n">${Number(v || 0).toLocaleString()}</div>
@@ -1355,7 +1355,8 @@ function renderReport(d){
       ${kpi((q.positive ?? 0).toLocaleString(), 'Genuinely interested',
             q.positive_rate != null ? q.positive_rate + '% of replies' : '')}
       ${kpi(o.bounces.toLocaleString(), "Couldn't be delivered",
-            o.bounce_rate != null ? o.bounce_rate + '% — under 3% is healthy' : '')}
+            o.bounce_rate == null ? '' : o.bounce_rate + '% — ' + (
+              o.bounce_rate < 3 ? 'healthy' : o.bounce_rate < 5 ? 'on the high side' : 'too high, clean the list'))}
       ${kpi(o.remaining.toLocaleString(), 'Still to contact', o.remaining ? 'Campaign is not finished' : 'All contacted')}
     </div>
   </div>
