@@ -80,14 +80,18 @@ header{background:var(--white);border-bottom:1px solid var(--line);
 .kpi .v{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
 .kpi .k{font-size:12.5px;color:var(--ink2);margin-top:3px}
 .kpi .s{font-size:12px;color:var(--ink2);margin-top:6px}
-/* anything you can click through to a list of people */
-[data-people]{cursor:pointer;position:relative}
+/* Anything you can click through to a list of people. The cue is visible at
+   rest, not on hover: a figure with no cue is simply not clickable. */
+[data-people]{cursor:pointer;transition:background .12s}
 [data-people]:hover{background:var(--purple-soft)}
-[data-people]::after{content:"See who";font-size:11px;color:var(--purple);font-weight:600;
-  opacity:0;transition:opacity .12s;display:block;margin-top:4px}
-[data-people]:hover::after{opacity:1}
-.fstep[data-people]:hover{background:var(--purple-soft);border-radius:6px}
-.fstep[data-people]::after{display:none}
+[data-people]:focus-visible{outline:2px solid var(--purple);outline-offset:-2px}
+.see{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:650;
+  color:var(--purple);background:var(--purple-soft);border:1px solid var(--purple-line);
+  border-radius:999px;padding:2px 8px;margin-top:8px;white-space:nowrap}
+.see::after{content:"\2192";font-weight:700}
+[data-people]:hover .see{background:#fff}
+.fstep[data-people]{border-radius:6px;padding-left:6px;margin-left:-6px}
+.fstep .see{margin:0 0 0 10px}
 .plist{max-height:56vh;overflow:auto;margin:0 -18px}
 .prow{display:flex;gap:12px;align-items:baseline;padding:9px 18px;border-bottom:1px solid var(--line);font-size:13.5px}
 .prow .pe{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--ink2);
@@ -1658,12 +1662,21 @@ $('pl-csv').addEventListener('click', async () => {
   } catch (e) { eflash(scrub(e.message), 'err'); }
 });
 
-$('rep-body').addEventListener('click', e => {
-  const el = e.target.closest('[data-people]');
-  if (!el) return;
+function peopleFromEl(el){
   const shown = el.querySelector('.v, .dd, .fv');
   const raw = shown ? shown.textContent.replace(/[^0-9]/g, '') : '';
   openPeople(el.dataset.people, raw === '' ? null : Number(raw));
+}
+$('rep-body').addEventListener('click', e => {
+  const el = e.target.closest('[data-people]');
+  if (el) peopleFromEl(el);
+});
+$('rep-body').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest('[data-people]');
+  if (!el) return;
+  e.preventDefault();
+  peopleFromEl(el);
 });
 
 function renderReport(d){
@@ -1672,18 +1685,30 @@ function renderReport(d){
   const maxDay = Math.max(...(d.daily || []).map(x => x.sent), 1);
 
   // metric = which list of people this figure opens, if any
-  const kpi = (v, k, sub, metric) => `<div class="kpi"${metric ? ` data-people="${metric}"` : ''}>
+  // metric = which list of people this figure opens, if any
+  const see = '<div class="see">See who</div>';
+  const kpi = (v, k, sub, metric) => `<div class="kpi"${metric
+      ? ` data-people="${metric}" role="button" tabindex="0"` : ''}>
     <div class="v">${v}</div>
-    <div class="k">${esc(k)}</div><div class="s">${esc(sub || '')}</div></div>`;
+    <div class="k">${esc(k)}</div><div class="s">${esc(sub || '')}</div>
+    ${metric ? see : ''}</div>`;
 
+  // "Reached the inbox" is emailed minus bounces — a calculation, not a list the
+  // platform can hand back — so it stays unclickable and shows no cue.
+  const FUNNEL_METRIC = {
+    'In the list': 'all', 'Emailed': 'contacted',
+    'Replied': 'replied', 'Genuinely interested': 'interested',
+  };
   const funnel = d.funnel.map((f, i) => {
     const prev = i ? d.funnel[i-1].value : null;
     const drop = prev && prev > 0 ? Math.round((f.value / prev) * 1000) / 10 : null;
-    return `<div class="fstep">
+    const m = FUNNEL_METRIC[f.label];
+    return `<div class="fstep"${m ? ` data-people="${m}" role="button" tabindex="0"` : ''}>
       <div class="fl">${esc(f.label)}</div>
       <div class="fbar" style="width:${bar(f.value, maxF)}%"></div>
       <div><span class="fv">${f.value.toLocaleString()}</span>
         ${drop !== null ? `<span class="fd"> · ${drop}% of the step above</span>` : ''}</div>
+      ${m ? see : ''}
     </div>`;
   }).join('');
 
@@ -1702,8 +1727,10 @@ function renderReport(d){
   const busiest = [...days].sort((a,b) => b.replied - a.replied)[0];
 
   const dl = (items) => `<div class="dl">${items.map(([t, v, note, metric]) =>
-    `<div${metric ? ` data-people="${metric}"` : ''}><div class="dt">${esc(t)}</div><div class="dd">${v}</div>
-      ${note ? `<div class="dn">${esc(note)}</div>` : ''}</div>`).join('')}</div>`;
+    `<div${metric ? ` data-people="${metric}" role="button" tabindex="0"` : ''}>
+      <div class="dt">${esc(t)}</div><div class="dd">${v}</div>
+      ${note ? `<div class="dn">${esc(note)}</div>` : ''}
+      ${metric ? see : ''}</div>`).join('')}</div>`;
 
   const del = d.delivery || {}, mb = d.mailboxes || {}, se = d.settings || {};
   const deliveryBlock = dl([
@@ -1734,11 +1761,11 @@ function renderReport(d){
   };
   const audienceBlock = audience.length ? audience.map(x => {
     const m = AUD_METRIC[x.label];
-    return `<div class="fstep"${m ? ` data-people="${m}"` : ''}>
+    return `<div class="fstep"${m ? ` data-people="${m}" role="button" tabindex="0"` : ''}>
       <div class="fl">${esc(x.label)}</div>
       <div class="fbar" style="width:${bar(x.value, audMax)}%"></div>
       <div class="fv">${x.value.toLocaleString()}</div>
-      ${m ? '<div class="fd">· see who</div>' : ''}</div>`;
+      ${m ? see : ''}</div>`;
   }).join('')
     : '<div class="hint">No breakdown available.</div>';
 
