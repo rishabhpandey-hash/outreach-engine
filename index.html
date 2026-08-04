@@ -92,6 +92,12 @@ header{background:var(--white);border-bottom:1px solid var(--line);
 [data-people]:hover .see{background:#fff}
 .fstep[data-people]{border-radius:6px;padding-left:6px;margin-left:-6px}
 .fstep .see{margin:0 0 0 10px}
+.callout{border:1px solid var(--amber-line);background:var(--amber-soft);border-radius:8px;
+  padding:12px 14px;margin-top:12px;font-size:13.5px;line-height:1.5}
+.callout b{color:var(--amber)}
+.callout ol{margin:8px 0 0;padding-left:20px;color:var(--ink2)}
+.callout .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  background:#fff;border:1px solid var(--line);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
 .plist{max-height:56vh;overflow:auto;margin:0 -18px}
 .prow{display:flex;gap:12px;align-items:baseline;padding:9px 18px;border-bottom:1px solid var(--line);font-size:13.5px}
 .prow .pe{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--ink2);
@@ -304,6 +310,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
         <button class="btn-primary" id="pull">Load these people</button>
       </div>
       <div class="hint" id="kl-note">Nothing is sent to anyone. They just land in the list below for you to go through.</div>
+      <div id="kl-warn"></div>
       <details id="kl-alt" style="margin-top:12px">
         <summary>Or pick a post we already have</summary>
         <select id="kl" style="margin-top:10px"><option value="">Loading posts…</option></select>
@@ -796,6 +803,7 @@ function applyLiRights(){
 }
 
 async function loadPostLists(){
+  setPullReady(false);
   try {
     const d = await api('/api/kn/lists');
     S.postLists = d.post_lists || [];
@@ -837,11 +845,21 @@ function matchPost(url){
 // We cannot scrape a post from here: the outreach tool's API has no endpoint that
 // turns a post link into people. So a pasted link is looked up among the posts it
 // has already scraped, and if it is not there we say exactly that.
+// The button is only live when there is actually a post to load, so clicking it
+// can never look like it did nothing.
+function setPullReady(ready){
+  $('pull').disabled = !ready;
+  $('pull').title = ready ? '' : 'Paste a link to a post we already have, or pick one below';
+}
+
 function resolvePasted(){
   const raw = $('kl-url').value.trim();
   const note = $('kl-note');
+  const warn = $('kl-warn');
+  warn.innerHTML = '';
   if (!raw) {
     $('kl').value = '';
+    setPullReady(false);
     note.textContent = `${(S.postLists || []).length} posts already brought in. `
       + 'Paste a link, or pick one below.';
     return;
@@ -849,6 +867,7 @@ function resolvePasted(){
   const hit = matchPost(raw);
   if (hit) {
     $('kl').value = hit.id;
+    setPullReady(true);
     const n = hit.engagers ?? 0;
     note.innerHTML = `Found <b>${esc(hit.name || 'this post')}</b> — ${n} `
       + `${n === 1 ? 'person' : 'people'} liked or commented on it. `
@@ -856,14 +875,27 @@ function resolvePasted(){
     return;
   }
   $('kl').value = '';
+  setPullReady(false);
   if (!/linkedin\.com/i.test(raw)) {
-    note.textContent = 'That does not look like a LinkedIn post link.';
+    note.textContent = '';
+    warn.innerHTML = '<div class="callout"><b>That is not a LinkedIn post link.</b> '
+      + 'Open the post on LinkedIn, copy its link, and paste it here.</div>';
     return;
   }
-  note.innerHTML = 'We do not have this post yet, and it cannot be fetched from here — '
-    + 'scraping a post has to be done in the outreach tool itself. '
-    + 'Scrape this post there, then paste the link again. '
-    + 'Anything already scraped is in the list below.';
+  // Say what has to happen, where, and in what order. This tool cannot scrape a
+  // post: the outreach platform's API has no endpoint that turns a post link
+  // into people, so the scrape has to be started in that platform.
+  const id = postId(raw);
+  note.textContent = '';
+  warn.innerHTML = `<div class="callout">
+    <b>We do not have this post yet.</b> This screen can only load a post that has
+    already been scraped, and starting a scrape is not something it can do.
+    <ol>
+      <li>Open the outreach tool and make a new lead list.</li>
+      <li>Choose <b>post likes</b> (and a second list for <b>post comments</b> if you want those too).</li>
+      <li>Paste this post link there${id ? ` — post <span class="mono">${esc(id)}</span>` : ''} and let it finish.</li>
+      <li>Come back, paste the same link here, and it will be found.</li>
+    </ol></div>`;
 }
 
 // ---------------------------------------------------------------- actions
@@ -999,6 +1031,8 @@ $('kl').addEventListener('change', () => {
   const chosen = $('kl').value;
   if (!chosen) return;
   $('kl-url').value = '';
+  $('kl-warn').innerHTML = '';
+  setPullReady(true);
   const l = (S.postLists || []).find(x => x.id === chosen);
   const n = l?.engagers ?? 0;
   $('kl-note').innerHTML = l
