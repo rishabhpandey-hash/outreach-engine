@@ -80,6 +80,20 @@ header{background:var(--white);border-bottom:1px solid var(--line);
 .kpi .v{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
 .kpi .k{font-size:12.5px;color:var(--ink2);margin-top:3px}
 .kpi .s{font-size:12px;color:var(--ink2);margin-top:6px}
+/* anything you can click through to a list of people */
+[data-people]{cursor:pointer;position:relative}
+[data-people]:hover{background:var(--purple-soft)}
+[data-people]::after{content:"See who";font-size:11px;color:var(--purple);font-weight:600;
+  opacity:0;transition:opacity .12s;display:block;margin-top:4px}
+[data-people]:hover::after{opacity:1}
+.fstep[data-people]:hover{background:var(--purple-soft);border-radius:6px}
+.fstep[data-people]::after{display:none}
+.plist{max-height:56vh;overflow:auto;margin:0 -18px}
+.prow{display:flex;gap:12px;align-items:baseline;padding:9px 18px;border-bottom:1px solid var(--line);font-size:13.5px}
+.prow .pe{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--ink2);
+  overflow-wrap:anywhere}
+.prow .pn{font-weight:600;min-width:150px;flex:none}
+.prow .px{margin-left:auto;flex:none;color:var(--ink2);font-size:12px;white-space:nowrap}
 .funnel{padding:6px 18px 18px}
 .fstep{display:flex;align-items:center;gap:12px;padding:7px 0}
 .fbar{height:26px;border-radius:5px;background:var(--purple);min-width:3px}
@@ -492,6 +506,20 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
     <textarea id="ld-msg" rows="8"></textarea>
   </div>
   <div class="d-f"><button id="ld-cancel">Cancel</button><button class="btn-primary" id="ld-save">Save</button></div>
+</dialog>
+
+<dialog id="people-dlg">
+  <div class="d-h"><strong id="pl-title">People</strong><button id="pl-x">Close</button></div>
+  <div class="d-b">
+    <div class="hint" id="pl-sub" style="margin:0 0 10px"></div>
+    <input id="pl-q" placeholder="Search a name, email or company" style="width:100%">
+    <div class="plist" id="pl-list"></div>
+  </div>
+  <div class="d-f">
+    <span class="hint" id="pl-count" style="margin:0 auto 0 0"></span>
+    <button id="pl-csv">Download CSV</button>
+    <button class="btn-primary" id="pl-close">Done</button>
+  </div>
 </dialog>
 
 <dialog id="tpl-dlg">
@@ -1541,6 +1569,7 @@ async function openReport(id){
     'Finding where people drop off…', 'Putting it together…']);
   try {
     const d = await eapi('/api/report?campaign_id=' + encodeURIComponent(id) + '&days=30');
+    PL.campaign = id;
     renderReport(d);
   } catch (e) {
     $('rep-body').innerHTML = `<div class="card"><div class="card-b">
@@ -1548,12 +1577,99 @@ async function openReport(id){
   } finally { hideLoader(); }
 }
 
+// ---------------------------------------------------------------- who is behind a number
+
+let PL = { campaign: null, metric: null, label: '', people: [], shown: [] };
+
+// The figure on the report and the list behind it come from two different places
+// upstream, and they do not always agree. Say so on screen rather than pick one.
+function plSubtitle(d, tileValue){
+  const bits = [];
+  if (d.reported != null && d.count != null && d.reported !== d.count) {
+    bits.push(d.reported_unit === 'emails'
+      ? `${d.reported.toLocaleString()} emails recorded, from ${d.count.toLocaleString()} different people`
+      : `${d.reported.toLocaleString()} recorded, ${d.count.toLocaleString()} listed`);
+  }
+  if (tileValue != null && d.count != null && Number(tileValue) !== d.count && Number(tileValue) !== d.reported) {
+    bits.push(`the report above shows ${Number(tileValue).toLocaleString()}`);
+  }
+  if (d.capped) bits.push(`showing the first ${d.cap.toLocaleString()}`);
+  if (d.count === 0 && (d.statuses_seen || []).length) {
+    bits.push('nobody is in this state right now — the campaign has ' +
+      d.statuses_seen.map(s => `${s.count.toLocaleString()} ${s.status.toLowerCase()}`).join(', '));
+  }
+  return bits.join(' · ');
+}
+
+function plRows(list){
+  if (!list.length) return '<div class="empty"><div class="empty-t">Nobody to show</div>Nothing matched.</div>';
+  return list.map(p => `<div class="prow">
+    <div class="pn">${esc(p.name || '—')}</div>
+    <div class="pe">${esc(p.email || '')}${p.company ? ` · ${esc(p.company)}` : ''}
+      ${p.category ? ` · <b>${esc(p.category)}</b>` : ''}</div>
+    <div class="px">${p.step ? 'email ' + p.step : ''}${p.when ? ' · ' + esc(String(p.when).slice(0, 10)) : ''}</div>
+  </div>`).join('');
+}
+
+function plFilter(){
+  const q = $('pl-q').value.trim().toLowerCase();
+  PL.shown = !q ? PL.people : PL.people.filter(p =>
+    [p.name, p.email, p.company, p.category].some(v => (v || '').toLowerCase().includes(q)));
+  $('pl-list').innerHTML = plRows(PL.shown);
+  $('pl-count').textContent = q
+    ? `${PL.shown.length.toLocaleString()} of ${PL.people.length.toLocaleString()} shown`
+    : `${PL.people.length.toLocaleString()} ${PL.people.length === 1 ? 'person' : 'people'}`;
+}
+
+async function openPeople(metric, tileValue){
+  if (!PL.campaign) return;
+  showLoader('Looking up the people', [
+    'Asking the platform…', 'Matching addresses…', 'Removing duplicates…', 'Almost there…']);
+  try {
+    const d = await eapi(`/api/people?campaign_id=${encodeURIComponent(PL.campaign)}&metric=${encodeURIComponent(metric)}`);
+    PL.metric = metric; PL.label = d.label || metric; PL.people = d.people || [];
+    $('pl-title').textContent = d.label || metric;
+    $('pl-sub').textContent = plSubtitle(d, tileValue);
+    $('pl-q').value = '';
+    plFilter();
+    $('people-dlg').showModal();
+  } catch (e) { eflash(scrub(e.message), 'err'); }
+  finally { hideLoader(); }
+}
+
+$('pl-q').addEventListener('input', plFilter);
+$('pl-x').addEventListener('click', () => $('people-dlg').close());
+$('pl-close').addEventListener('click', () => $('people-dlg').close());
+$('pl-csv').addEventListener('click', async () => {
+  // Same route, asked for as a file, so what you download is what you saw.
+  try {
+    const r = await fetch(`${EMAIL_API}/api/people?campaign_id=${encodeURIComponent(PL.campaign)}`
+      + `&metric=${encodeURIComponent(PL.metric)}&format=csv`,
+      { headers: { Authorization: 'Bearer ' + await token() } });
+    if (!r.ok) throw new Error('Could not build the file.');
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a');
+    a.href = url; a.download = `${PL.metric}-${PL.campaign}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) { eflash(scrub(e.message), 'err'); }
+});
+
+$('rep-body').addEventListener('click', e => {
+  const el = e.target.closest('[data-people]');
+  if (!el) return;
+  const shown = el.querySelector('.v, .dd, .fv');
+  const raw = shown ? shown.textContent.replace(/[^0-9]/g, '') : '';
+  openPeople(el.dataset.people, raw === '' ? null : Number(raw));
+});
+
 function renderReport(d){
   const o = d.overview, q = d.reply_quality || {}, c = d.campaign;
   const maxF = Math.max(...d.funnel.map(f => f.value), 1);
   const maxDay = Math.max(...(d.daily || []).map(x => x.sent), 1);
 
-  const kpi = (v, k, sub) => `<div class="kpi"><div class="v">${v}</div>
+  // metric = which list of people this figure opens, if any
+  const kpi = (v, k, sub, metric) => `<div class="kpi"${metric ? ` data-people="${metric}"` : ''}>
+    <div class="v">${v}</div>
     <div class="k">${esc(k)}</div><div class="s">${esc(sub || '')}</div></div>`;
 
   const funnel = d.funnel.map((f, i) => {
@@ -1581,34 +1697,45 @@ function renderReport(d){
       title="${esc(x.date)} (${esc(x.day)}): ${x.sent} sent, ${x.replied} replied, ${x.bounced} bounced"></div>`).join('');
   const busiest = [...days].sort((a,b) => b.replied - a.replied)[0];
 
-  const dl = (items) => `<div class="dl">${items.map(([t, v, note]) =>
-    `<div><div class="dt">${esc(t)}</div><div class="dd">${v}</div>
+  const dl = (items) => `<div class="dl">${items.map(([t, v, note, metric]) =>
+    `<div${metric ? ` data-people="${metric}"` : ''}><div class="dt">${esc(t)}</div><div class="dd">${v}</div>
       ${note ? `<div class="dn">${esc(note)}</div>` : ''}</div>`).join('')}</div>`;
 
   const del = d.delivery || {}, mb = d.mailboxes || {}, se = d.settings || {};
   const deliveryBlock = dl([
     ['Emails sent', (del.emails_sent || 0).toLocaleString(),
       del.emails_per_person ? `${del.emails_per_person} per person, counting follow-ups` : ''],
-    ['People emailed', (del.people_contacted || 0).toLocaleString(), 'Each person counted once'],
+    ['People emailed', (del.people_contacted || 0).toLocaleString(), 'Each person counted once', 'contacted'],
     ['Reached the inbox', (del.delivered || 0).toLocaleString(),
       del.delivery_rate != null ? `${del.delivery_rate}% of everyone emailed` : ''],
     ['Bounced', (del.bounces || 0).toLocaleString(),
       del.bounce_rate == null ? '' : `${del.bounce_rate}% — ` + (del.bounce_rate < 3 ? 'healthy'
-        : del.bounce_rate < 5 ? 'on the high side' : 'too high, clean the list')],
-    ['Unsubscribed', (del.unsubscribes || 0).toLocaleString(), 'Asked not to be contacted again'],
+        : del.bounce_rate < 5 ? 'on the high side' : 'too high, clean the list'), 'bounced'],
+    ['Unsubscribed', (del.unsubscribes || 0).toLocaleString(), 'Asked not to be contacted again', 'unsubscribed'],
     ['Marked as spam', (del.blocked || 0).toLocaleString(), ''],
     ['Opened', del.tracking_opens ? (del.opens || 0).toLocaleString() : 'Not tracked',
       del.tracking_opens ? (del.open_rate != null ? del.open_rate + '% of people' : '')
-        : 'Open tracking is off on this campaign, which protects deliverability'],
-    ['Clicked', del.tracking_clicks ? (del.clicks || 0).toLocaleString() : 'Not tracked', ''],
+        : 'Open tracking is off on this campaign, which protects deliverability',
+      del.tracking_opens ? 'opened' : null],
+    ['Clicked', del.tracking_clicks ? (del.clicks || 0).toLocaleString() : 'Not tracked', '',
+      del.tracking_clicks ? 'clicked' : null],
   ]);
 
   const audience = (d.audience_breakdown || []);
   const audMax = Math.max(...audience.map(x => x.value), 1);
-  const audienceBlock = audience.length ? audience.map(x => `<div class="fstep">
+  const AUD_METRIC = {
+    'Finished the sequence': 'completed', 'Still in progress': 'in_progress',
+    'Not started yet': 'not_started', 'Paused': 'paused', 'Stopped': 'stopped',
+    'Blocked or unsubscribed': 'blocked',
+  };
+  const audienceBlock = audience.length ? audience.map(x => {
+    const m = AUD_METRIC[x.label];
+    return `<div class="fstep"${m ? ` data-people="${m}"` : ''}>
       <div class="fl">${esc(x.label)}</div>
       <div class="fbar" style="width:${bar(x.value, audMax)}%"></div>
-      <div class="fv">${x.value.toLocaleString()}</div></div>`).join('')
+      <div class="fv">${x.value.toLocaleString()}</div>
+      ${m ? '<div class="fd">· see who</div>' : ''}</div>`;
+  }).join('')
     : '<div class="hint">No breakdown available.</div>';
 
   const mailboxBlock = dl([
@@ -1655,13 +1782,16 @@ function renderReport(d){
       ${(d.verdicts || []).map(v => `<div class="verdict">${esc(v)}</div>`).join('')}
     </div>
     <div class="kpis" style="border-top:1px solid var(--line)">
-      ${kpi(o.people_contacted.toLocaleString(), 'People emailed', 'Each person once')}
-      ${kpi(o.replies.toLocaleString(), 'Replied', o.reply_one_in ? '1 in ' + o.reply_one_in : '')}
+      ${kpi(o.people_contacted.toLocaleString(), 'People emailed', 'Each person once', 'contacted')}
+      ${kpi(o.replies.toLocaleString(), 'Replied', o.reply_one_in ? '1 in ' + o.reply_one_in : '', 'replied')}
       ${kpi((q.positive ?? 0).toLocaleString(), 'Genuinely interested',
             q.positive_rate != null ? q.positive_rate + '% of replies' : '')}
       ${kpi(o.bounces.toLocaleString(), "Couldn't be delivered",
             o.bounce_rate == null ? '' : o.bounce_rate + '% — ' + (
-              o.bounce_rate < 3 ? 'healthy' : o.bounce_rate < 5 ? 'on the high side' : 'too high, clean the list'))}
+              o.bounce_rate < 3 ? 'healthy' : o.bounce_rate < 5 ? 'on the high side' : 'too high, clean the list'),
+            'bounced')}
+      ${'' /* "Still to contact" counts emails not yet sent, including follow-ups to
+              people already in the sequence, so it does not map to one list of people */}
       ${kpi(o.remaining.toLocaleString(), 'Still to contact', o.remaining ? 'Campaign is not finished' : 'All contacted')}
     </div>
   </div>
