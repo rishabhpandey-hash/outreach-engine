@@ -93,6 +93,11 @@ table.rep td.num,table.rep th.num{text-align:right;font-variant-numeric:tabular-
 .spark{display:flex;align-items:flex-end;gap:2px;height:70px;padding:0 18px}
 .spark div{flex:1;min-width:2px;background:var(--purple-line);border-radius:2px 2px 0 0;position:relative}
 .spark div.hot{background:var(--purple)}
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line)}
+.dl>div{background:#fff;padding:13px 16px}
+.dl .dt{font-size:12.5px;color:var(--ink2)}
+.dl .dd{font-size:17px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums}
+.dl .dn{font-size:12px;color:var(--ink2);margin-top:3px}
 .verdict{padding:12px 14px;border-left:3px solid var(--purple);background:var(--purple-soft);
   border-radius:0 8px 8px 0;margin-bottom:9px;font-size:14px}
 @media (max-width:640px){.sum{grid-template-columns:1fr}}
@@ -1315,7 +1320,7 @@ function renderReport(d){
   }).join('');
 
   const stepRows = (d.steps || []).map(st => `<tr>
-    <td><b>Email ${st.step}</b></td>
+    <td><b>Email ${st.step}</b>${st.subject ? `<div class="hint" style="margin:2px 0 0">${esc(st.subject)}</div>` : ''}</td>
     <td class="num">${st.sent.toLocaleString()}</td>
     <td class="num">${st.replies.toLocaleString()}</td>
     <td class="num">${st.reply_rate == null ? '—' : st.reply_rate + '%'}</td>
@@ -1327,6 +1332,58 @@ function renderReport(d){
       style="height:${Math.max(2, Math.round((x.sent / maxDay) * 100))}%"
       title="${esc(x.date)} (${esc(x.day)}): ${x.sent} sent, ${x.replied} replied, ${x.bounced} bounced"></div>`).join('');
   const busiest = [...days].sort((a,b) => b.replied - a.replied)[0];
+
+  const dl = (items) => `<div class="dl">${items.map(([t, v, note]) =>
+    `<div><div class="dt">${esc(t)}</div><div class="dd">${v}</div>
+      ${note ? `<div class="dn">${esc(note)}</div>` : ''}</div>`).join('')}</div>`;
+
+  const del = d.delivery || {}, mb = d.mailboxes || {}, se = d.settings || {};
+  const deliveryBlock = dl([
+    ['Emails sent', (del.emails_sent || 0).toLocaleString(),
+      del.emails_per_person ? `${del.emails_per_person} per person, counting follow-ups` : ''],
+    ['People emailed', (del.people_contacted || 0).toLocaleString(), 'Each person counted once'],
+    ['Reached the inbox', (del.delivered || 0).toLocaleString(),
+      del.delivery_rate != null ? `${del.delivery_rate}% of everyone emailed` : ''],
+    ['Bounced', (del.bounces || 0).toLocaleString(),
+      del.bounce_rate == null ? '' : `${del.bounce_rate}% — ` + (del.bounce_rate < 3 ? 'healthy'
+        : del.bounce_rate < 5 ? 'on the high side' : 'too high, clean the list')],
+    ['Unsubscribed', (del.unsubscribes || 0).toLocaleString(), 'Asked not to be contacted again'],
+    ['Marked as spam', (del.blocked || 0).toLocaleString(), ''],
+    ['Opened', del.tracking_opens ? (del.opens || 0).toLocaleString() : 'Not tracked',
+      del.tracking_opens ? (del.open_rate != null ? del.open_rate + '% of people' : '')
+        : 'Open tracking is off on this campaign, which protects deliverability'],
+    ['Clicked', del.tracking_clicks ? (del.clicks || 0).toLocaleString() : 'Not tracked', ''],
+  ]);
+
+  const audience = (d.audience_breakdown || []);
+  const audMax = Math.max(...audience.map(x => x.value), 1);
+  const audienceBlock = audience.length ? audience.map(x => `<div class="fstep">
+      <div class="fl">${esc(x.label)}</div>
+      <div class="fbar" style="width:${bar(x.value, audMax)}%"></div>
+      <div class="fv">${x.value.toLocaleString()}</div></div>`).join('')
+    : '<div class="hint">No breakdown available.</div>';
+
+  const mailboxBlock = dl([
+    ['Mailboxes sending', (mb.count || 0).toLocaleString(),
+      mb.daily_capacity ? `${mb.daily_capacity.toLocaleString()} emails a day between them` : ''],
+    ['Average warm-up score', mb.warmup_avg != null ? mb.warmup_avg + '%' : '—',
+      'Higher means more mail lands in the inbox'],
+    ['Weakest mailbox', mb.warmup_lowest != null ? mb.warmup_lowest + '%' : '—',
+      mb.weak_warmup ? `${mb.weak_warmup} below 70%` : 'All above 70%'],
+    ['Not connected', (mb.not_connected || 0).toLocaleString(),
+      mb.not_connected ? 'These are not sending at all' : 'All mailboxes are working'],
+  ]) + ((mb.weakest || []).length ? `<div class="card-b" style="padding-top:0"><div class="hint">
+      Lowest scoring: ${mb.weakest.map(w => esc(w.email) + ' (' + esc(w.reputation) + ')').join(', ')}</div></div>` : '');
+
+  const settingsBlock = dl([
+    ['Sending days', esc(se.days || '—'), ''],
+    ['Sending hours', esc(se.hours || '—'), se.timezone ? esc(se.timezone) : ''],
+    ['Daily cap', se.max_per_day ? se.max_per_day.toLocaleString() : '—', 'Most people contacted in one day'],
+    ['Gap between emails', se.gap_minutes ? se.gap_minutes + ' min' : '—', 'Slower is safer for deliverability'],
+    ['Stops when someone replies', se.stops_on_reply ? 'Yes' : 'No',
+      se.stops_on_reply ? 'Nobody gets a follow-up after replying' : 'Follow-ups continue after a reply'],
+    ['Sent as plain text', se.plain_text ? 'Yes' : 'No', 'Plain text usually lands better'],
+  ]);
 
   const catRows = (q.categories || []).length
     ? `<table class="rep"><thead><tr><th>What they said</th><th class="num">Replies</th><th class="num">Share</th></tr></thead>
@@ -1375,8 +1432,30 @@ function renderReport(d){
   </div>
 
   <div class="card">
+    <div class="card-h bordered"><div class="card-t">Delivery in detail</div>
+      <div class="card-s">Everything that happened to the emails themselves.</div></div>
+    ${deliveryBlock}
+  </div>
+
+  <div class="card">
+    <div class="card-h bordered"><div class="card-t">What happened to everyone in the list</div></div>
+    <div class="funnel">${audienceBlock}</div>
+  </div>
+
+  <div class="card">
     <div class="card-h bordered"><div class="card-t">What the replies actually said</div></div>
     ${catRows}
+  </div>
+
+  <div class="card">
+    <div class="card-h bordered"><div class="card-t">Mailbox health</div>
+      <div class="card-s">The inboxes doing the sending, and whether they are in good standing.</div></div>
+    ${mailboxBlock}
+  </div>
+
+  <div class="card">
+    <div class="card-h bordered"><div class="card-t">How this campaign is set up</div></div>
+    ${settingsBlock}
   </div>
 
   <div class="card">
