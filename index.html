@@ -1429,6 +1429,7 @@ function renderReport(d){
     <table class="rep"><thead><tr><th>Step</th><th class="num">Sent</th><th class="num">Replies</th>
       <th class="num">Reply rate</th><th class="num">Interested</th><th class="num">Undelivered</th></tr></thead>
       <tbody>${stepRows || '<tr><td colspan="6">No step data.</td></tr>'}</tbody></table>
+    ${d.step_note ? `<div class="card-b"><div class="hint" style="margin:0">${esc(d.step_note)}</div></div>` : ''}
   </div>
 
   <div class="card">
