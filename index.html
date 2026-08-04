@@ -1589,6 +1589,7 @@ let PL = { campaign: null, metric: null, label: '', people: [], shown: [] };
 // upstream, and they do not always agree. Say so on screen rather than pick one.
 function plSubtitle(d, tileValue){
   const bits = [];
+  if (d.note) bits.push(d.note);
   // Only claim a de-duplicated people count when we actually have everyone. If the
   // list is capped, the count is how many we are showing, not how many there are.
   if (d.reported != null && d.count != null && d.reported !== d.count && !d.capped) {
@@ -1816,7 +1817,7 @@ function renderReport(d){
       ${kpi(o.people_contacted.toLocaleString(), 'People emailed', 'Each person once', 'contacted')}
       ${kpi(o.replies.toLocaleString(), 'Replied', o.reply_one_in ? '1 in ' + o.reply_one_in : '', 'replied')}
       ${kpi((q.positive ?? 0).toLocaleString(), 'Genuinely interested',
-            q.positive_rate != null ? q.positive_rate + '% of replies' : '')}
+            q.positive_rate != null ? q.positive_rate + '% of replies' : '', 'interested')}
       ${kpi(o.bounces.toLocaleString(), "Couldn't be delivered",
             o.bounce_rate == null ? '' : o.bounce_rate + '% — ' + (
               o.bounce_rate < 3 ? 'healthy' : o.bounce_rate < 5 ? 'on the high side' : 'too high, clean the list'),
