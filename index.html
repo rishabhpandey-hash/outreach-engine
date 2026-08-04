@@ -301,9 +301,12 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
       <button class="btn-primary hide" id="pair-new">Pair a campaign</button>
     </div>
     <div class="card-s" style="padding:0 18px 14px">
-      Link an email campaign to the LinkedIn campaign that is working the same people.
-      Whoever replies first on one channel gets stopped on the other, so nobody is
-      chased on two channels at once.
+      Pair an email campaign with the LinkedIn campaign working the same people —
+      that is the only manual step. Every 15 minutes the dashboard reads both platforms,
+      matches everyone, and <b>automatically stops the email</b> of anyone who already
+      answered on LinkedIn. The one thing it cannot do alone is remove an email-replier
+      from LinkedIn (that platform has no stop endpoint), so it keeps that short list
+      ready for you instead.
     </div>
     <div class="card-b flush" id="pair-list"></div>
   </div>
@@ -587,6 +590,7 @@ let L = { pairs: [], open: null, detail: null, sl: [], kn: [] };
 function pairRow(p){
   const c = p.counts || {};
   const chips = [
+    p.auto_stop ? `<span class="mini m-done">automatic</span>` : `<span class="mini m-inv">manual</span>`,
     c.on_both ? `<span class="mini m-conn">${c.on_both.toLocaleString()} on both channels</span>`
       : p.synced_at ? `<span class="mini m-nocopy">nobody in common</span>`
       : `<span class="mini m-inv">not checked yet</span>`,
@@ -641,13 +645,16 @@ function renderPair(d){
     <div class="card-h bordered">
       <div class="card-t">${esc(p.label || p.sl_campaign_name || 'Pair')}</div>
       <div class="grow"></div>
-      <button id="pair-sync">${p.synced_at ? 'Check both channels again' : 'Check both channels'}</button>
+      <button id="pair-sync">${p.synced_at ? 'Check now' : 'Run the first check'}</button>
       ${E.viewer?.is_admin ? '<button class="btn-no" id="pair-del">Unpair</button>' : ''}
     </div>
     <div class="card-s" style="padding:0 18px 14px">
       Email: <b>${esc(p.sl_campaign_name || p.sl_campaign_id)}</b> ·
       LinkedIn: <b>${esc(p.kn_campaign_name || 'campaign')}</b>
       ${p.synced_at ? ' · last checked ' + esc(new Date(p.synced_at).toLocaleString()) : ' · never checked'}
+      · checks itself every 15 minutes${p.auto_stop
+        ? ', and stops email repliers\u2019 sequences on its own'
+        : ' — automatic stopping is off for this pair'}
     </div>
     <div class="kpis" style="border-top:1px solid var(--line)">
       <div class="kpi"><div class="v">${(c.on_both || 0).toLocaleString()}</div>
@@ -665,6 +672,8 @@ function renderPair(d){
     <div class="card-h bordered"><div class="step">1</div>
       <div class="card-t">Replied on LinkedIn — stop emailing them</div></div>
     <div class="card-b">
+      <div class="hint" style="margin:0 0 10px">Handled automatically at every check.
+        The button is only for stopping them right now instead of within 15 minutes.</div>
       ${stop.length ? `<div class="row">
           <span class="hint" style="margin:0">${(d.to_stop_email_total ?? stop.length).toLocaleString()}
             ${(d.to_stop_email_total ?? stop.length) === 1 ? 'person' : 'people'}
