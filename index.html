@@ -1119,7 +1119,6 @@ function switchView(v){
   $('view-people').classList.toggle('hide', v !== 'people');
   $('view-results').classList.toggle('hide', v !== 'results');
   $('view-report').classList.add('hide');
-  $('tpl-btn').classList.toggle('hide', v !== 'linkedin');
   if (v === 'email') loadEmail(false);
   if (v === 'people') { loadUsers(); loadSendState(); }
   if (v === 'results') loadResults(false);
