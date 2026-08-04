@@ -192,6 +192,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <div class="tabs" id="views" style="margin-left:6px">
     <button class="tab on" data-view="linkedin">LinkedIn</button>
     <button class="tab" data-view="email">Cold emails</button>
+    <button class="tab hide" data-view="results" id="tab-results">Results</button>
     <button class="tab hide" data-view="people" id="tab-people">People</button>
   </div>
   <div class="grow"></div>
@@ -320,6 +321,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
         <span class="hint" style="margin:0" id="launch-note"></span>
       </div>
       <div class="hint" id="camp-note"></div>
+      <div class="hint" id="camp-info"></div>
     </div>
   </div>
 
@@ -353,6 +355,25 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
     </div>
   </div>
 </div>
+
+<div class="page hide" id="view-results">
+  <div id="rmsg"></div>
+  <div class="card">
+    <div class="card-h">
+      <div class="card-t" id="r-headline">Loading results…</div>
+      <div class="grow"></div>
+      <button id="r-refresh">Refresh</button>
+    </div>
+    <div class="card-b" style="padding-top:0">
+      <div class="sum" id="r-tiles" style="margin-bottom:0"></div>
+      <div class="hint" id="r-note"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h bordered"><div class="card-t">Campaign by campaign</div></div>
+    <div class="card-b flush" id="r-list"></div>
+  </div>
+</div>
 </div>
 
 <dialog id="etpl-dlg">
@@ -366,6 +387,12 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
     <textarea id="et-body" rows="14" placeholder="Write the email. Merge tags like {{first_name}} work as normal."></textarea>
     <div class="hint">Merge tags such as <span class="mono">{{first_name}}</span> and
       <span class="mono">{{company_name}}</span> are filled in for each recipient automatically.</div>
+    <div id="et-tagcheck" class="hint"></div>
+    <label class="f" style="margin-top:16px">Preview</label>
+    <div id="et-preview" style="border:1px solid var(--line);border-radius:8px;padding:14px;
+      background:#fff;max-height:260px;overflow:auto;font:14px/1.6 -apple-system,Segoe UI,Roboto,Arial">
+      <div class="hint" style="margin:0">Start typing to see the email.</div>
+    </div>
     <label class="f" style="margin-top:14px">Notes (optional)</label>
     <input id="et-notes" placeholder="When to use this one">
   </div>
@@ -834,8 +861,12 @@ function renderLaunches(){
           ${l.error ? '<span class="mini" style="background:var(--red-soft);color:var(--red);border-color:var(--red-line)">failed</span>' : ''}
         </div>
         <div class="p-role">${esc(l.campaign_name || ('campaign ' + l.sl_campaign_id))}</div>
-        <div class="p-why">${esc(l.launched_by)} · ${new Date(l.created_at).toLocaleString()}${l.error ? ' · ' + esc(String(l.error).slice(0,120)) : ''}</div>
+        <div class="p-why">${esc(l.launched_by)} · ${new Date(l.created_at).toLocaleString()}${
+          l.lead_count != null ? ' · ' + Number(l.lead_count).toLocaleString() + ' leads' : ''}${
+          l.error ? ' · ' + esc(String(l.error).slice(0,120)) : ''}${l.restored_at ? ' · undone' : ''}</div>
       </div>
+      <div class="p-act">${(l.previous_sequence && l.previous_sequence.length && !l.restored_at)
+        ? `<button data-undo="${l.id}">Undo</button>` : ''}</div>
     </div>`).join('');
 }
 
@@ -862,6 +893,7 @@ async function loadEmail(force){
     $('pick-camp').innerHTML = E.campaigns.length
       ? E.campaigns.map(x => `<option value="${x.id}">${esc(x.name)} — ${esc(x.status)}</option>`).join('')
       : '<option value="">No campaigns found</option>';
+    loadCampInfo();
     $('camp-note').textContent = c.draft_count
       ? `${c.draft_count} draft campaign${c.draft_count === 1 ? '' : 's'} available.`
       : `No draft campaigns — showing ${E.campaigns.length} you can still load copy into. Create a draft campaign for a clean start.`;
@@ -869,6 +901,31 @@ async function loadEmail(force){
     $('pick-camp').innerHTML = '<option value="">Could not load campaigns</option>';
     $('camp-note').textContent = scrub(e.message);
   }
+}
+
+// Live preview, and flag merge tags the chosen campaign's leads cannot fill in.
+const SAFE_TAGS = ['first_name','last_name','email','company_name','website','location','phone_number'];
+function refreshPreview(){
+  const subj = $('et-subject').value || '(no subject)';
+  const body = $('et-body').value || '';
+  const demo = { first_name:'Jane', last_name:'Doe', email:'jane@example.com',
+    company_name:'Example Ltd', org:'Example Ltd', website:'example.com',
+    location:'London', phone_number:'', title:'Head of Marketing' };
+  const fill = (t) => String(t).replace(/\{\{\s*([\w.]+)\s*\}\}/g,
+    (m,k) => demo[k] !== undefined ? demo[k] : '\u27e8' + k + '?\u27e9');
+  $('et-preview').innerHTML =
+    `<div style="font-weight:650;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--line)">${esc(fill(subj))}</div>`
+    + (body ? fill(body) : '<div class="hint" style="margin:0">No body yet.</div>');
+
+  const used = [...new Set([...(subj + ' ' + body).matchAll(/\{\{\s*([\w.]+)\s*\}\}/g)].map(m => m[1]))];
+  if (!used.length) { $('et-tagcheck').textContent = ''; return; }
+  const known = new Set([...SAFE_TAGS, ...(E.campFields || [])]);
+  const unknown = (E.campFields && E.campFields.length) ? used.filter(t => !known.has(t)) : [];
+  $('et-tagcheck').innerHTML = unknown.length
+    ? `<span style="color:var(--red)"><b>Check ${unknown.map(esc).join(', ')}</b> \u2014 the selected campaign's leads
+       do not have ${unknown.length === 1 ? 'that field, so it' : 'those fields, so they'} would arrive blank.</span>`
+    : `Using ${used.map(t => '<b>' + esc(t) + '</b>').join(', ')}${
+        (E.campFields && E.campFields.length) ? ' \u2014 all present on this campaign\u2019s leads.' : ''}`;
 }
 
 function openTpl(id){
@@ -880,6 +937,7 @@ function openTpl(id){
   $('et-body').value = t?.body || '';
   $('et-notes').value = t?.notes || '';
   $('et-del').classList.toggle('hide', !t);
+  refreshPreview();
   $('etpl-dlg').showModal();
 }
 
@@ -907,6 +965,22 @@ async function delTpl(){
   } catch (e) { eflash(e.message, 'err'); }
 }
 
+async function loadCampInfo(){
+  const id = $('pick-camp').value;
+  E.campFields = []; E.campLeads = null;
+  if (!id) { $('camp-info').textContent = ''; return; }
+  $('camp-info').textContent = 'Checking this campaign\u2026';
+  try {
+    const d = await eapi('/api/campaign-info?campaign_id=' + encodeURIComponent(id));
+    E.campFields = d.sample_fields || []; E.campLeads = d.lead_count;
+    const leads = d.lead_count === null ? 'An unknown number of' : d.lead_count.toLocaleString();
+    const steps = (d.steps && d.steps.length)
+      ? `It currently holds ${d.steps.length} email step${d.steps.length === 1 ? '' : 's'}, which loading a template would replace.`
+      : 'It has no email copy in it yet.';
+    $('camp-info').innerHTML = `<b>${leads} lead${d.lead_count === 1 ? '' : 's'}</b> would receive this. ${esc(steps)}`;
+  } catch (e) { $('camp-info').textContent = scrub(e.message); }
+}
+
 async function launch(start){
   const template_id = $('pick-tpl').value;
   const campaign_id = $('pick-camp').value;
@@ -914,8 +988,10 @@ async function launch(start){
   const camp = E.campaigns.find(c => String(c.id) === String(campaign_id));
   const tpl = E.templates.find(t => t.id === template_id);
 
+  const who = (E.campLeads === null || E.campLeads === undefined)
+    ? 'its leads' : `${E.campLeads.toLocaleString()} ${E.campLeads === 1 ? 'person' : 'people'}`;
   const msg = start
-    ? `Start sending?\n\n"${tpl?.name}" will be written into "${camp?.name}" and that campaign will START SENDING to its leads.`
+    ? `Start sending to ${who}?\n\n"${tpl?.name}" will be written into "${camp?.name}" and that campaign will START SENDING.`
     : `Load "${tpl?.name}" into "${camp?.name}"?\n\nThe copy is saved to the campaign. Nothing is sent.`;
   if (!confirm(msg)) return;
 
@@ -950,9 +1026,11 @@ function switchView(v){
   $('view-linkedin').classList.toggle('hide', v !== 'linkedin');
   $('view-email').classList.toggle('hide', v !== 'email');
   $('view-people').classList.toggle('hide', v !== 'people');
+  $('view-results').classList.toggle('hide', v !== 'results');
   $('tpl-btn').classList.toggle('hide', v !== 'linkedin');
   if (v === 'email') loadEmail(false);
   if (v === 'people') { loadUsers(); loadSendState(); }
+  if (v === 'results') loadResults(false);
 }
 $('views').addEventListener('click', e => {
   const b = e.target.closest('[data-view]'); if (!b) return;
@@ -1100,6 +1178,79 @@ async function toggleSending(){
   } catch (e) { pflash(e.message, 'err'); $('send-toggle').disabled = false; }
 }
 
+async function undoLoad(id){
+  const l = E.launches.find(x => x.id === id); if (!l) return;
+  if (!confirm(`Put back the copy that was in "${l.campaign_name || 'this campaign'}" before this load?\n\n` +
+    `${l.previous_sequence.length} email step(s) will be restored.`)) return;
+  try {
+    const d = await eapi('/api/restore', { method:'POST', body:JSON.stringify({ launch_id:id }) });
+    eflash(`Restored ${d.restored_steps} step(s).`, 'ok'); await loadEmail(true);
+  } catch (e) { eflash(e.message, 'err'); }
+}
+
+// ---------------------------------------------------------------- results
+
+let R = { loaded: false };
+function rflash(t, kind){
+  $('rmsg').innerHTML = t ? `<div class="flash ${kind}">${esc(scrub(t))}</div>` : '';
+  if (t) setTimeout(() => { $('rmsg').innerHTML = ''; }, 7000);
+}
+
+async function loadResults(force){
+  if (R.loaded && !force) return;
+  $('r-headline').textContent = 'Working out the numbers\u2026';
+  try {
+    const d = await eapi('/api/analytics' + (force ? '?refresh=1' : ''));
+    R.loaded = true;
+    $('r-headline').textContent = d.headline;
+
+    const t = d.totals || {};
+    const tiles = [
+      [t.people_contacted, 'People emailed', 'Each person counted once, however many emails they were sent.'],
+      [t.replies, 'Replied', t.reply_one_in ? `About 1 in every ${t.reply_one_in} people wrote back.` : 'Nobody has replied yet.'],
+      [t.interested, 'Marked interested', 'Replies the team tagged as a real opportunity.'],
+      [t.bounces, "Couldn't be delivered", t.bounce_rate != null ? `${t.bounce_rate}% of everyone emailed. Under 3% is healthy.` : ''],
+    ];
+    $('r-tiles').innerHTML = tiles.map(([v, l, h]) => `
+      <div class="s-box"><div class="s-n">${Number(v || 0).toLocaleString()}</div>
+        <div class="s-l">${esc(l)}</div>
+        <div class="hint" style="margin-top:6px">${esc(h)}</div></div>`).join('');
+
+    $('r-note').innerHTML = d.open_tracking_note ? `<b>On opens:</b> ${esc(d.open_tracking_note)}` : '';
+
+    const rows = (d.campaigns || []).filter(c => c.people_contacted > 0);
+    $('r-list').innerHTML = rows.length ? rows.map(c => {
+      const cls = c.health.level === 'bad' ? 'm-nocopy' : c.health.level === 'watch' ? 'm-nocopy' : 'm-copy';
+      const style = c.health.level === 'bad'
+        ? 'background:var(--red-soft);color:var(--red);border-color:var(--red-line)' : '';
+      return `<div class="person">
+        <div class="p-main">
+          <div class="p-name">${esc(c.name)}
+            <span class="mini ${cls}" style="${style}">${esc(c.health.level === 'good' ? 'healthy'
+              : c.health.level === 'watch' ? 'worth watching' : c.health.level === 'bad' ? 'needs attention' : 'early days')}</span>
+            ${c.paused_reason ? `<span class="mini m-nocopy">stopped: ${esc(c.paused_reason)}</span>` : ''}</div>
+          <div class="p-role">${c.people_contacted.toLocaleString()} people emailed \u00b7
+            ${c.replies.toLocaleString()} replied${c.reply_one_in ? ` (1 in ${c.reply_one_in})` : ''} \u00b7
+            ${c.interested} interested \u00b7 ${c.bounces} undelivered</div>
+          <div class="p-why">${esc(c.health.says)}${c.open_tracking === 'off'
+            ? ' Opens are not tracked on this campaign.' : ''}${c.remaining
+            ? ` ${c.remaining.toLocaleString()} people still to be contacted.` : ''}</div>
+        </div>
+      </div>`;
+    }).join('') : `<div class="empty"><div class="empty-t">Nothing has been sent yet</div>
+      Once a campaign starts, its results appear here.</div>`;
+  } catch (e) {
+    $('r-headline').textContent = 'Could not load results';
+    rflash(e.message, 'err');
+  }
+}
+$('r-refresh').addEventListener('click', () => loadResults(true));
+$('launch-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-undo]'); if (b) undoLoad(b.dataset.undo);
+});
+$('pick-camp').addEventListener('change', loadCampInfo);
+$('et-subject').addEventListener('input', refreshPreview);
+$('et-body').addEventListener('input', refreshPreview);
 $('pause-camp').addEventListener('click', pauseCampaign);
 $('send-toggle').addEventListener('click', toggleSending);
 $('launch').addEventListener('click', () => launch(true));
@@ -1138,6 +1289,7 @@ $('load-only').addEventListener('click', () => launch(false));
   document.querySelector('[data-view="linkedin"]').classList.toggle('hide', !okLinkedIn);
   document.querySelector('[data-view="email"]').classList.toggle('hide', !okEmail);
   $('tab-people').classList.toggle('hide', !E.viewer?.is_admin);
+  $('tab-results').classList.toggle('hide', !(E.viewer?.can_analytics || E.viewer?.is_admin));
 
   show('app');
   switchView(okLinkedIn ? 'linkedin' : 'email');
