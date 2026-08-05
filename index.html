@@ -1185,6 +1185,23 @@ async function delTpl(){
   } catch (e) { eflash(e.message, 'err'); }
 }
 
+function switchView(v){
+  for (const t of document.querySelectorAll('#views .tab'))
+    t.classList.toggle('on', t.dataset.view === v);
+  $('view-linkedin').classList.toggle('hide', v !== 'linkedin');
+  $('view-email').classList.toggle('hide', v !== 'email');
+  $('view-people').classList.toggle('hide', v !== 'people');
+  $('view-results').classList.toggle('hide', v !== 'results');
+  $('view-report').classList.add('hide');
+  if (v === 'email') loadEmail(false);
+  if (v === 'people') { loadUsers(); loadSendState(); }
+  if (v === 'results') loadResults(false);
+}
+$('views').addEventListener('click', e => {
+  const b = e.target.closest('[data-view]'); if (!b) return;
+  switchView(b.dataset.view);
+});
+
 // ---------------------------------------------------------------- people & rights
 
 let P = { users: [], rights: [], groups: [], legacy: [], you: '', editing: null, loaded: false };
