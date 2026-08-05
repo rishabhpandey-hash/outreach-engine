@@ -201,6 +201,13 @@ details[open] summary{margin-bottom:10px}
 
 dialog{border:1px solid var(--line);border-radius:13px;padding:0;max-width:680px;width:94vw;
   box-shadow:0 20px 55px rgba(17,24,39,.2)}
+/* Reviewing copy needs room — this one fills most of the screen. */
+dialog#etpl-dlg{max-width:1180px;width:88vw}
+dialog#etpl-dlg .d-b{max-height:74vh}
+@media (min-width:1000px){
+  dialog#etpl-dlg .et-cols{display:grid;grid-template-columns:1.15fr .85fr;gap:20px;align-items:start}
+  dialog#etpl-dlg .et-cols > div{min-width:0}
+}
 dialog::backdrop{background:rgba(17,24,39,.42)}
 .d-h{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .d-h strong{flex:1;font-size:16px}
@@ -281,7 +288,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <span class="badge-int">Internal</span>
   <div class="tabs" id="views" style="margin-left:6px">
     <button class="tab on" data-view="linkedin">LinkedIn</button>
-    <button class="tab" data-view="email">Cold emails</button>
+    <button class="tab" data-view="email">Messaging</button>
     <button class="tab hide" data-view="results" id="tab-results">Results</button>
     <button class="tab hide" data-view="people" id="tab-people">People</button>
   </div>
@@ -317,59 +324,39 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
 <div class="page hide" id="view-email">
   <div id="emsg"></div>
 
+  <div class="sum" id="m-tiles"></div>
+
   <div class="card" id="send-warn">
     <div class="card-h">
       <div class="step" style="background:var(--amber-soft);color:var(--amber);border-color:var(--amber-line)">!</div>
       <div class="card-t">Sending is switched off</div>
-      <div class="card-s">You can write templates and load copy into a campaign, but nothing will
-        actually send until sending is turned on. Ask Rishabh to flip it when you're ready.</div>
+      <div class="card-s">Messages can be written and reviewed, but approving one will not
+        actually send until sending is turned on in People.</div>
     </div>
   </div>
 
   <div class="card">
     <div class="card-h bordered">
-      <div class="step">1</div>
-      <div class="card-t">Email templates</div>
+      <div class="card-t">Email messages</div>
       <div class="grow"></div>
-      <button class="btn-primary" id="new-tpl">New template</button>
+      <button class="btn-primary" id="new-tpl">New message set</button>
     </div>
     <div class="card-b flush" id="tpl-list"></div>
   </div>
 
   <div class="card">
     <div class="card-h bordered">
-      <div class="step">2</div>
-      <div class="card-t">Load into a campaign and start</div>
-      <div class="card-s">Pick the email, pick the campaign. The copy is written into that
-        campaign's first email, then the campaign is started.</div>
+      <div class="card-t">LinkedIn messages</div>
     </div>
-    <div class="card-b">
-      <div class="row" style="align-items:flex-end">
-        <div style="flex:1;min-width:220px">
-          <label class="f">Email to send</label>
-          <select id="pick-tpl"><option value="">Choose a template…</option></select>
-        </div>
-        <div style="flex:1;min-width:220px">
-          <label class="f">Campaign</label>
-          <select id="pick-camp"><option value="">Loading campaigns…</option></select>
-        </div>
-      </div>
-      <div class="row" style="margin-top:12px">
-        <button id="load-only">Load copy only</button>
-        <button class="btn-no hide" id="pause-camp">Stop this campaign</button>
-      <button class="btn-primary" id="launch">Load and start sending</button>
-        <span class="hint" style="margin:0" id="launch-note"></span>
-      </div>
-      <div class="hint" id="camp-note"></div>
-      <div class="hint" id="camp-info"></div>
-    </div>
+    <div class="card-b flush" id="li-tpl-list"></div>
   </div>
 
   <div class="card">
-    <div class="card-h bordered"><div class="step">3</div><div class="card-t">Recent launches</div></div>
+    <div class="card-h bordered"><div class="card-t">Approval history</div></div>
     <div class="card-b flush" id="launch-list"></div>
   </div>
 </div>
+
 <div class="page hide" id="view-people">
   <div id="pmsg"></div>
   <div class="card">
@@ -428,26 +415,39 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <div class="d-b">
     <label class="f">Name <span style="color:var(--ink2);font-weight:400">— just for you, not sent</span></label>
     <input id="et-name" placeholder="e.g. Associations — content hub angle">
-    <div id="et-steps"></div>
+    <div id="et-lock"></div>
+    <div class="et-cols" style="margin-top:14px">
+      <div>
+        <div id="et-steps"></div>
     <div class="row" style="margin-top:12px">
       <button type="button" id="et-add-step">+ Add a follow-up</button>
       <span class="hint" style="margin:0" id="et-step-count"></span>
     </div>
-    <div class="hint">Merge tags such as <span class="mono">{{first_name}}</span> and
-      <span class="mono">{{company_name}}</span> are filled in for each recipient automatically.</div>
-    <div id="et-tagcheck" class="hint"></div>
-    <label class="f" style="margin-top:16px">Preview</label>
-    <div id="et-preview" style="border:1px solid var(--line);border-radius:8px;padding:14px;
-      background:#fff;max-height:260px;overflow:auto;font:14px/1.6 -apple-system,Segoe UI,Roboto,Arial">
-      <div class="hint" style="margin:0">Start typing to see the email.</div>
+        <div class="hint">Merge tags such as <span class="mono">{{first_name}}</span> and
+          <span class="mono">{{company_name}}</span> are filled in for each recipient automatically.</div>
+      </div>
+      <div>
+        <label class="f">Send to which campaign</label>
+        <select id="et-camp"><option value="">Choose a campaign…</option></select>
+        <div class="hint" id="et-campinfo"></div>
+        <label class="f" style="margin-top:14px">Preview</label>
+        <div id="et-preview" style="border:1px solid var(--line);border-radius:8px;padding:14px;
+          background:#fff;max-height:44vh;overflow:auto;font:14px/1.6 -apple-system,Segoe UI,Roboto,Arial">
+          <div class="hint" style="margin:0">Start typing to see the email.</div>
+        </div>
+      </div>
     </div>
+    <div id="et-tagcheck" class="hint"></div>
     <label class="f" style="margin-top:14px">Notes (optional)</label>
     <input id="et-notes" placeholder="When to use this one">
   </div>
   <div class="d-f">
-    <button class="btn-no" id="et-del" style="margin-right:auto">Delete</button>
-    <button id="et-cancel">Cancel</button>
-    <button class="btn-primary" id="et-save">Save template</button>
+    <button class="btn-no hide" id="et-del" style="margin-right:auto">Delete</button>
+    <span class="hint" id="et-foot" style="margin:0 auto 0 0"></span>
+    <button id="et-cancel">Close</button>
+    <button class="btn-no hide" id="et-reject">Reject</button>
+    <button id="et-save">Save</button>
+    <button class="btn-primary hide" id="et-approve">Approve and send</button>
   </div>
 </dialog>
 
@@ -864,47 +864,97 @@ function eflash(t, kind){
   if (t) setTimeout(() => { $('emsg').innerHTML = ''; }, 8000);
 }
 
+// Plain-language status for a message set.
+function mStatus(t){
+  if (t.running) return { key:'running', label:'Approved and running', cls:'m-done' };
+  if (t.status === 'approved') return { key:'approved', label:'Approved', cls:'m-copy' };
+  if (t.status === 'rejected') return { key:'rejected', label:'Rejected', cls:'m-nocopy' };
+  return { key:'pending', label:'Waiting for approval', cls:'m-inv' };
+}
+
+// Counts first, so nothing important is hidden below a scroll.
+function renderTiles(){
+  const of = ch => E.templates.filter(t => (t.channel || 'email') === ch);
+  const box = (ch, noun) => {
+    const list = of(ch);
+    const pending = list.filter(t => mStatus(t).key === 'pending').length;
+    const live = list.filter(t => t.running).length;
+    return `<div class="s-box">
+      <div class="s-n">${pending}</div>
+      <div class="s-l">${noun} pending approval</div>
+      <div class="hint" style="margin:6px 0 0">${live} approved and running · ${list.length} in total</div>
+    </div>`;
+  };
+  $('m-tiles').innerHTML = box('email', 'Cold outreach messages') + box('linkedin', 'LinkedIn messages');
+}
+
+// One row per message set: everything visible, no dropdown to dig through.
+function tplRow(t){
+  const st = mStatus(t);
+  const n = t.steps_count || (t.steps && t.steps.length) || 1;
+  const tick = st.key === 'running' || st.key === 'approved'
+    ? '<span style="color:var(--green);font-weight:700;font-size:15px">&#10003;</span>'
+    : st.key === 'rejected'
+      ? '<span style="color:var(--red);font-weight:700;font-size:15px">&#10007;</span>'
+      : '<span style="color:var(--ink2);font-size:15px">&#9711;</span>';
+  const may = E.viewer?.can_launch || E.viewer?.is_admin;
+  const acts = st.key === 'running'
+    ? `<button data-mopen="${t.id}">View</button>`
+    : `${may ? `<button class="btn-yes" data-mopen="${t.id}">Approve</button>` : ''}
+       <button data-mopen="${t.id}">Edit</button>
+       ${may ? `<button class="btn-no" data-mreject="${t.id}">Reject</button>` : ''}`;
+  return `<div class="person">
+    <div class="av">${tick}</div>
+    <div class="p-main">
+      <div class="p-name">${esc(t.name)} <span class="mini ${st.cls}">${esc(st.label)}</span></div>
+      <div class="p-role" title="${esc(t.subject || '')}">${n} message${n === 1 ? '' : 's'} in this set${
+        t.subject ? ' · ' + esc(t.subject) : ''}</div>
+      <div class="p-why">${st.key === 'approved' || st.key === 'running'
+        ? 'Approved by ' + esc(t.approved_by || '—') + (t.approved_at ? ' · ' + new Date(t.approved_at).toLocaleString() : '')
+        : st.key === 'rejected'
+          ? 'Rejected by ' + esc(t.rejected_by || '—') + (t.reject_note ? ' · ' + esc(t.reject_note) : '')
+          : esc((t.body || '').replace(/<[^>]+>/g, ' ').slice(0, 120))}</div>
+    </div>
+    <div class="p-act">${acts}</div>
+  </div>`;
+}
+
 function renderTemplates(){
-  if (!E.templates.length) {
-    $('tpl-list').innerHTML = `<div class="empty"><div class="empty-t">No templates yet</div>
-      Add the emails your team has written, then load one into a campaign.</div>`;
-  } else {
-    $('tpl-list').innerHTML = E.templates.map(t => `
-      <div class="person">
-        <div class="av">${esc((t.name || '?').charAt(0).toUpperCase())}</div>
-        <div class="p-main">
-          <div class="p-name">${esc(t.name)}</div>
-          <div class="p-role" title="${esc(t.subject)}">Subject: ${esc(t.subject)}</div>
-          <div class="p-why">${(t.steps && t.steps.length) || 1} email${((t.steps && t.steps.length) || 1) === 1 ? '' : 's'} in this sequence</div>
-          <div class="p-why">${esc((t.body || '').replace(/<[^>]+>/g, ' ').slice(0, 130))}…</div>
-        </div>
-        <div class="p-act"><button data-etpl="${t.id}">Edit</button></div>
-      </div>`).join('');
-  }
-  $('pick-tpl').innerHTML = '<option value="">Choose a template…</option>' +
-    E.templates.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+  const of = ch => E.templates.filter(t => (t.channel || 'email') === ch);
+  const email = of('email'), li = of('linkedin');
+  $('tpl-list').innerHTML = email.length ? email.map(tplRow).join('')
+    : `<div class="empty"><div class="empty-t">No email messages yet</div>
+       Add the messages your team has written, then approve one to send it.</div>`;
+  $('li-tpl-list').innerHTML = li.length ? li.map(tplRow).join('')
+    : `<div class="empty"><div class="empty-t">No LinkedIn messages yet</div>
+       LinkedIn copy is not connected to a sender yet — this block is ready for it.</div>`;
+  renderTiles();
 }
 
 function renderLaunches(){
   if (!E.launches.length) {
-    $('launch-list').innerHTML = `<div class="empty">Nothing launched from here yet.</div>`;
+    $('launch-list').innerHTML = `<div class="empty">Nothing approved from here yet.</div>`;
     return;
   }
   $('launch-list').innerHTML = E.launches.map(l => `
     <div class="person">
       <div class="p-main">
-        <div class="p-name">${esc(l.template_name || 'template')}
-          ${l.started ? '<span class="mini m-copy">started</span>'
-                      : '<span class="mini m-nocopy">copy loaded, not started</span>'}
-          ${l.error ? '<span class="mini" style="background:var(--red-soft);color:var(--red);border-color:var(--red-line)">failed</span>' : ''}
+        <div class="p-name">${esc(l.template_name || 'message set')}
+          ${l.error ? '<span class="mini m-nocopy">failed</span>'
+            : l.started ? '<span class="mini m-done">running</span>'
+                        : '<span class="mini m-inv">copy loaded only</span>'}
+          ${l.restored_at ? '<span class="mini m-inv">undone</span>' : ''}
         </div>
         <div class="p-role">${esc(l.campaign_name || ('campaign ' + l.sl_campaign_id))}</div>
         <div class="p-why">${esc(l.launched_by)} · ${new Date(l.created_at).toLocaleString()}${
-          l.lead_count != null ? ' · ' + Number(l.lead_count).toLocaleString() + ' leads' : ''}${
-          l.error ? ' · ' + esc(String(l.error).slice(0,120)) : ''}${l.restored_at ? ' · undone' : ''}</div>
+          l.lead_count != null ? ' · ' + Number(l.lead_count).toLocaleString() + ' people' : ''}${
+          l.error ? ' · ' + esc(String(l.error).slice(0,120)) : ''}</div>
       </div>
-      <div class="p-act">${(l.previous_sequence && l.previous_sequence.length && !l.restored_at)
-        ? `<button data-undo="${l.id}">Undo</button>` : ''}</div>
+      <div class="p-act">${
+        (l.started && !l.restored_at && !l.error && (E.viewer?.can_pause || E.viewer?.is_admin))
+          ? `<button class="btn-no" data-mstop="${l.sl_campaign_id}" data-mname="${esc(l.campaign_name || '')}">Stop sending</button>` : ''}${
+        (l.previous_sequence && l.previous_sequence.length && !l.restored_at)
+          ? `<button data-undo="${l.id}">Undo</button>` : ''}</div>
     </div>`).join('');
 }
 
@@ -916,11 +966,7 @@ async function loadEmail(force){
     E.sending = !!d.sending_enabled;
     E.viewer = d.viewer || {};
     $('new-tpl').classList.toggle('hide', !E.viewer.can_edit_templates);
-    $('launch').classList.toggle('hide', !E.viewer.can_launch);
-    $('pause-camp').classList.toggle('hide', !E.viewer.can_pause);
     $('send-warn').classList.toggle('hide', E.sending);
-    $('launch').disabled = !E.sending;
-    $('launch-note').textContent = E.sending ? '' : 'Turned off while we build.';
     renderTemplates(); renderLaunches();
     E.loaded = true;
   } catch (e) { eflash(e.message, 'err'); }
@@ -928,17 +974,8 @@ async function loadEmail(force){
   try {
     const c = await eapi('/api/campaigns');
     E.campaigns = c.campaigns || [];
-    $('pick-camp').innerHTML = E.campaigns.length
-      ? E.campaigns.map(x => `<option value="${x.id}">${esc(x.name)} — ${esc(x.status)}</option>`).join('')
-      : '<option value="">No campaigns found</option>';
-    loadCampInfo();
-    $('camp-note').textContent = c.draft_count
-      ? `${c.draft_count} draft campaign${c.draft_count === 1 ? '' : 's'} available.`
-      : `No draft campaigns — showing ${E.campaigns.length} you can still load copy into. Create a draft campaign for a clean start.`;
-  } catch (e) {
-    $('pick-camp').innerHTML = '<option value="">Could not load campaigns</option>';
-    $('camp-note').textContent = scrub(e.message);
-  }
+    E.draftCount = c.draft_count || 0;
+  } catch (e) { E.campaigns = []; }
 }
 
 // Live preview, and flag merge tags the chosen campaign's leads cannot fill in.
@@ -1018,16 +1055,108 @@ $('et-steps').addEventListener('input', refreshPreview);
 function openTpl(id){
   const t = E.templates.find(x => x.id === id) || null;
   E.editing = t;
-  $('et-title').textContent = t ? 'Edit template' : 'New template';
+  const st = t ? mStatus(t) : { key:'new' };
+  const may = E.viewer?.can_launch || E.viewer?.is_admin;
+  const locked = st.key === 'running';
+
+  $('et-title').textContent = !t ? 'New message set'
+    : locked ? 'Already running — read only' : 'Review these messages';
   $('et-name').value = t?.name || '';
   E.steps = (t?.steps && t.steps.length)
     ? t.steps.map((x, i) => ({ subject:x.subject||'', body:x.body||'', delay_days: i ? (x.delay_days||3) : 0 }))
     : [{ subject: t?.subject || '', body: t?.body || '', delay_days: 0 }];
   renderSteps();
   $('et-notes').value = t?.notes || '';
-  $('et-del').classList.toggle('hide', !t);
+
+  // Nothing about a live set can be changed — that copy is already going out.
+  $('et-lock').innerHTML = locked
+    ? `<div class="callout" style="margin-top:12px"><b>This is already lined up and running.</b>
+        Approved by ${esc(t.approved_by || '—')}${t.approved_at ? ' on ' + esc(new Date(t.approved_at).toLocaleString()) : ''}.
+        It cannot be approved or edited again. To change the copy, make a new message set.</div>`
+    : t && st.key === 'rejected'
+      ? `<div class="callout" style="margin-top:12px"><b>Rejected</b> by ${esc(t.rejected_by || '—')}${
+          t.reject_note ? ' — ' + esc(t.reject_note) : ''}. Edit it and approve when it reads right.</div>`
+      : '';
+
+  $('et-del').classList.toggle('hide', !t || locked);
+  $('et-save').classList.toggle('hide', locked || !E.viewer?.can_edit_templates);
+  $('et-approve').classList.toggle('hide', locked || !t || !may);
+  $('et-reject').classList.toggle('hide', locked || !t || !may);
+  $('et-foot').textContent = locked ? 'Read only.'
+    : may ? 'Approving writes these messages into the campaign and starts sending.'
+          : 'You can edit and save. Approving is restricted.';
+
+  // The campaign is chosen here, at approval time.
+  $('et-camp').innerHTML = ['<option value="">Choose a campaign…</option>'].concat(
+    (E.campaigns || []).map(c => `<option value="${c.id}">${esc(c.name)} — ${esc(c.status)}</option>`)).join('');
+  $('et-camp').disabled = locked;
+  $('et-campinfo').textContent = (E.campaigns || []).length ? '' : 'No campaigns could be loaded.';
+  for (const el of $('et-steps').querySelectorAll('input,textarea')) el.disabled = locked;
+  $('et-add-step').classList.toggle('hide', locked);
+
   refreshPreview();
   $('etpl-dlg').showModal();
+}
+
+// How many people this campaign would reach, and what it would replace.
+async function loadCampInfoFor(id){
+  E.campFields = []; E.campLeads = null;
+  if (!id) { $('et-campinfo').textContent = ''; return; }
+  $('et-campinfo').textContent = 'Checking this campaign…';
+  try {
+    const d = await eapi('/api/campaign-info?campaign_id=' + encodeURIComponent(id));
+    E.campFields = d.sample_fields || []; E.campLeads = d.lead_count;
+    const leads = d.lead_count === null ? 'An unknown number of' : d.lead_count.toLocaleString();
+    const steps = (d.steps && d.steps.length)
+      ? `It already holds ${d.steps.length} message${d.steps.length === 1 ? '' : 's'}, which approving would replace.`
+      : 'It has no copy in it yet.';
+    $('et-campinfo').innerHTML = `<b>${leads} ${d.lead_count === 1 ? 'person' : 'people'}</b> would receive this. ${esc(steps)}`;
+    refreshPreview();
+  } catch (e) { $('et-campinfo').textContent = scrub(e.message); }
+}
+
+async function approveTpl(){
+  const t = E.editing; if (!t) return;
+  const campaign_id = $('et-camp').value;
+  if (!campaign_id) { $('et-campinfo').textContent = 'Choose the campaign to send this to.'; return; }
+  const camp = (E.campaigns || []).find(c => String(c.id) === String(campaign_id));
+  const who = (E.campLeads === null || E.campLeads === undefined)
+    ? 'its people' : `${E.campLeads.toLocaleString()} ${E.campLeads === 1 ? 'person' : 'people'}`;
+  if (!confirm(`Approve "${t.name}" and start sending to ${who} in "${camp?.name}"?`
+    + `\n\nThis writes the messages into that campaign and starts it.`)) return;
+
+  const go = async (overwrite) => eapi('/api/approve', { method:'POST', body:JSON.stringify({
+    template_id: t.id, campaign_id: Number(campaign_id), campaign_name: camp?.name || null, overwrite })});
+
+  $('et-approve').disabled = true;
+  const label = $('et-approve').textContent; $('et-approve').textContent = 'Approving…';
+  try {
+    try { await go(false); }
+    catch (e1) {
+      if (e1.code === 'campaign_already_has_copy') {
+        const subs = (e1.info?.existing_subjects || []).map(x => '· ' + x).join('\n');
+        if (!confirm(`"${camp?.name}" already has ${e1.info?.existing_steps} message(s):\n\n${subs}\n\n`
+          + `Approving replaces them. Continue?`)) throw new Error('cancelled');
+        await go(true);
+      } else throw e1;
+    }
+    $('etpl-dlg').close();
+    eflash('Approved. The campaign is sending.', 'ok');
+    await loadEmail(true);
+  } catch (e) {
+    if (e.message !== 'cancelled') eflash(e.message, 'err');
+  } finally { $('et-approve').disabled = false; $('et-approve').textContent = label; }
+}
+
+async function rejectTpl(id, name){
+  const note = prompt(`Why is "${name}" being rejected? (optional — the writer will see this)`);
+  if (note === null) return;
+  try {
+    await eapi('/api/reject', { method:'POST', body:JSON.stringify({ template_id:id, note:note || null })});
+    if ($('etpl-dlg').open) $('etpl-dlg').close();
+    eflash('Rejected. It stays in the list for editing.', 'ok');
+    await loadEmail(true);
+  } catch (e) { eflash(e.message, 'err'); }
 }
 
 async function saveTpl2(){
@@ -1055,78 +1184,6 @@ async function delTpl(){
     $('etpl-dlg').close(); eflash('Template deleted.', 'ok'); await loadEmail(true);
   } catch (e) { eflash(e.message, 'err'); }
 }
-
-async function loadCampInfo(){
-  const id = $('pick-camp').value;
-  E.campFields = []; E.campLeads = null;
-  if (!id) { $('camp-info').textContent = ''; return; }
-  $('camp-info').textContent = 'Checking this campaign\u2026';
-  try {
-    const d = await eapi('/api/campaign-info?campaign_id=' + encodeURIComponent(id));
-    E.campFields = d.sample_fields || []; E.campLeads = d.lead_count;
-    const leads = d.lead_count === null ? 'An unknown number of' : d.lead_count.toLocaleString();
-    const steps = (d.steps && d.steps.length)
-      ? `It currently holds ${d.steps.length} email step${d.steps.length === 1 ? '' : 's'}, which loading a template would replace.`
-      : 'It has no email copy in it yet.';
-    $('camp-info').innerHTML = `<b>${leads} lead${d.lead_count === 1 ? '' : 's'}</b> would receive this. ${esc(steps)}`;
-  } catch (e) { $('camp-info').textContent = scrub(e.message); }
-}
-
-async function launch(start){
-  const template_id = $('pick-tpl').value;
-  const campaign_id = $('pick-camp').value;
-  if (!template_id || !campaign_id) { eflash('Pick a template and a campaign first.', 'err'); return; }
-  const camp = E.campaigns.find(c => String(c.id) === String(campaign_id));
-  const tpl = E.templates.find(t => t.id === template_id);
-
-  const who = (E.campLeads === null || E.campLeads === undefined)
-    ? 'its leads' : `${E.campLeads.toLocaleString()} ${E.campLeads === 1 ? 'person' : 'people'}`;
-  const msg = start
-    ? `Start sending to ${who}?\n\n"${tpl?.name}" will be written into "${camp?.name}" and that campaign will START SENDING.`
-    : `Load "${tpl?.name}" into "${camp?.name}"?\n\nThe copy is saved to the campaign. Nothing is sent.`;
-  if (!confirm(msg)) return;
-
-  const btn = start ? $('launch') : $('load-only');
-  const label = btn.textContent; btn.disabled = true; btn.textContent = 'Working…';
-  try {
-    let d;
-    try {
-      d = await eapi('/api/launch', { method:'POST', body:JSON.stringify({
-        template_id, campaign_id: Number(campaign_id), campaign_name: camp?.name, start }) });
-    } catch (e1) {
-      if (e1.code !== 'campaign_already_has_copy') throw e1;
-      const subs = (e1.info?.existing_subjects || []).map(x => '  • ' + x).join('\n');
-      const ok = confirm(
-        `"${camp?.name}" already has ${e1.info?.existing_steps} email step(s):\n\n${subs}\n\n` +
-        `Loading "${tpl?.name}" will REPLACE all of them. Continue?`);
-      if (!ok) { eflash('Left the campaign as it was.', 'ok'); return; }
-      d = await eapi('/api/launch', { method:'POST', body:JSON.stringify({
-        template_id, campaign_id: Number(campaign_id), campaign_name: camp?.name,
-        start, overwrite: true }) });
-    }
-    eflash(d.started ? `Copy loaded and "${camp?.name}" is now sending.`
-                     : `Copy loaded into "${camp?.name}". Not started.`, 'ok');
-    await loadEmail(true);
-  } catch (e) { eflash(e.message, 'err'); }
-  finally { btn.disabled = false; btn.textContent = label; if (start) $('launch').disabled = !E.sending; }
-}
-
-function switchView(v){
-  for (const t of document.querySelectorAll('#views .tab'))
-    t.classList.toggle('on', t.dataset.view === v);
-  $('view-linkedin').classList.toggle('hide', v !== 'linkedin');
-  $('view-email').classList.toggle('hide', v !== 'email');
-  $('view-people').classList.toggle('hide', v !== 'people');
-  $('view-results').classList.toggle('hide', v !== 'results');
-  $('view-report').classList.add('hide');
-  if (v === 'email') loadEmail(false);
-  if (v === 'people') { loadUsers(); loadSendState(); }
-  if (v === 'results') loadResults(false);
-}
-$('views').addEventListener('click', e => {
-  const b = e.target.closest('[data-view]'); if (!b) return;
-  switchView(b.dataset.view);
-});
 
 // ---------------------------------------------------------------- people & rights
 
@@ -1310,22 +1367,28 @@ $('u-del').addEventListener('click', delUser);
 $('u-cancel').addEventListener('click', () => $('user-dlg').close());
 $('u-x').addEventListener('click', () => $('user-dlg').close());
 $('new-tpl').addEventListener('click', () => openTpl(null));
+$('et-camp').addEventListener('change', () => loadCampInfoFor($('et-camp').value));
+$('et-approve').addEventListener('click', approveTpl);
+$('et-reject').addEventListener('click', () => E.editing && rejectTpl(E.editing.id, E.editing.name));
+$('li-tpl-list').addEventListener('click', e => {
+  const o = e.target.closest('[data-mopen]'); if (o) openTpl(o.dataset.mopen);
+});
 $('tpl-list').addEventListener('click', e => {
-  const b = e.target.closest('[data-etpl]'); if (b) openTpl(b.dataset.etpl);
+  const r = e.target.closest('[data-mreject]');
+  if (r) { const t = E.templates.find(x => x.id === r.dataset.mreject); return void rejectTpl(r.dataset.mreject, t?.name || 'this set'); }
+  const o = e.target.closest('[data-mopen]'); if (o) openTpl(o.dataset.mopen);
 });
 $('et-save').addEventListener('click', saveTpl2);
 $('et-del').addEventListener('click', delTpl);
 $('et-cancel').addEventListener('click', () => $('etpl-dlg').close());
 $('et-x').addEventListener('click', () => $('etpl-dlg').close());
-async function pauseCampaign(){
-  const campaign_id = $('pick-camp').value;
-  if (!campaign_id) { eflash('Pick the campaign you want to stop.', 'err'); return; }
-  const camp = E.campaigns.find(c => String(c.id) === String(campaign_id));
-  if (!confirm(`Stop "${camp?.name}"?\n\nIt stops sending immediately. You can start it again later.`)) return;
+async function pauseCampaign(campaign_id, name){
+  if (!campaign_id) return;
+  if (!confirm(`Stop "${name || ('campaign ' + campaign_id)}"?\n\nIt stops sending immediately.`)) return;
   try {
     await eapi('/api/pause', { method:'POST', body:JSON.stringify({
-      campaign_id: Number(campaign_id), campaign_name: camp?.name }) });
-    eflash(`"${camp?.name}" is stopped.`, 'ok');
+      campaign_id: Number(campaign_id), campaign_name: name || null }) });
+    eflash(`"${name || 'The campaign'}" is stopped.`, 'ok');
     await loadEmail(true);
   } catch (e) { eflash(e.message, 'err'); }
 }
@@ -1757,14 +1820,12 @@ $('r-list').addEventListener('click', e => {
   const b = e.target.closest('[data-report]'); if (b) openReport(b.dataset.report);
 });
 $('launch-list').addEventListener('click', e => {
+  const st = e.target.closest('[data-mstop]');
+  if (st) return void pauseCampaign(st.dataset.mstop, st.dataset.mname);
   const b = e.target.closest('[data-undo]'); if (b) undoLoad(b.dataset.undo);
 });
-$('pick-camp').addEventListener('change', loadCampInfo);
 
-$('pause-camp').addEventListener('click', pauseCampaign);
 $('send-toggle').addEventListener('click', toggleSending);
-$('launch').addEventListener('click', () => launch(true));
-$('load-only').addEventListener('click', () => launch(false));
 
 // ---------------------------------------------------------------- boot
 
