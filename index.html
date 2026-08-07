@@ -1024,11 +1024,25 @@ function stepCard(i, st){
   </div>`;
 }
 
+// The approve button states how many emails it covers, so adding a follow-up has
+// to relabel it — otherwise it still offers to approve the old count.
+function syncApproveLabel(){
+  const n = E.steps.length;
+  if (!$('et-approve')) return;
+  $('et-approve').textContent = n > 1 ? `Approve all ${n} emails and send` : 'Approve and send';
+  if (!$('et-foot').textContent.startsWith('Read only')
+      && !$('et-foot').textContent.startsWith('You can edit')) {
+    $('et-foot').textContent = `One approval covers ${n === 1 ? 'this email' : 'all ' + n + ' emails'} `
+      + 'in this campaign — the whole sequence is written and started together.';
+  }
+}
+
 function renderSteps(){
   $('et-steps').innerHTML = E.steps.map((st, i) => stepCard(i, st)).join('');
   $('et-step-count').textContent = E.steps.length === 1
     ? 'One email. Add follow-ups if the campaign should chase.'
     : `${E.steps.length} emails in this sequence.`;
+  syncApproveLabel();
   refreshPreview();
 }
 
@@ -1084,13 +1098,9 @@ function openTpl(id){
   $('et-save').classList.toggle('hide', locked || !E.viewer?.can_edit_templates);
   $('et-approve').classList.toggle('hide', locked || !t || !may);
   $('et-reject').classList.toggle('hide', locked || !t || !may);
-  const nEmails = E.steps.length;
-  $('et-approve').textContent = nEmails > 1
-    ? `Approve all ${nEmails} emails and send` : 'Approve and send';
   $('et-foot').textContent = locked ? 'Read only.'
-    : may ? `One approval covers ${nEmails === 1 ? 'this email' : 'all ' + nEmails + ' emails'} `
-            + 'in this campaign — the whole sequence is written and started together.'
-          : 'You can edit and save. Approving is restricted.';
+    : may ? '' : 'You can edit and save. Approving is restricted.';
+  if (!locked && may) syncApproveLabel();
 
   // The campaign is chosen here, at approval time.
   $('et-camp').innerHTML = ['<option value="">Choose a campaign…</option>'].concat(
