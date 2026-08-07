@@ -1270,7 +1270,15 @@ function renderLegacy(){
     ).join('')}</div></div>`;
 }
 
-function openUser(email, prefill){
+async function openUser(email, prefill){
+  // The rights come from the same call that loads the people list, and that call
+  // also pulls the campaign list from the sending platform, so it can take a
+  // second. Opening the dialog before it lands used to show an empty
+  // "What they can do" with no explanation.
+  if (!P.rights.length) {
+    $('u-rights').innerHTML = '<div class="hint">Loading what can be granted…</div>';
+    try { await loadUsers(true); } catch (_) { /* handled below */ }
+  }
   const u = P.users.find(x => x.email === email) || null;
   P.editing = u;
   $('u-title').textContent = u ? 'Change what they can do' : 'Add someone';
@@ -1289,7 +1297,11 @@ function openUser(email, prefill){
     if (!rows.length) return '';
     return `<div class="grp" style="margin-top:6px"><div class="grp-t">${esc(g)}</div></div>`
       + rows.map(toggle).join('');
-  }).join('') || P.rights.map(toggle).join('');
+  }).join('') || P.rights.map(toggle).join('')
+    // Never leave this blank and silent: say what went wrong instead.
+    || `<div class="callout"><b>Could not load the list of rights.</b>
+        Close this, hit Refresh, and open it again. If it keeps happening the
+        server did not return them.</div>`;
   const chosen = new Set((u?.report_campaign_ids || []).map(String));
   $('u-scope').innerHTML = (P.campaigns || []).map(c => `
     <label style="display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)">
