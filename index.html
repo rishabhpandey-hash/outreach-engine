@@ -71,6 +71,8 @@ header{background:var(--white);border-bottom:1px solid var(--line);
 
 /* ---------- summary ---------- */
 .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+/* the messaging row has two blocks, not three — let them fill the width */
+#m-tiles{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 #r-tiles{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 /* ---------- report ---------- */
 .rep-back{margin-bottom:14px}
