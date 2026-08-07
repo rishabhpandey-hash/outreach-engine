@@ -339,16 +339,16 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
 
   <div class="card">
     <div class="card-h bordered">
-      <div class="card-t">Email messages</div>
+      <div class="card-t">Email campaigns</div>
       <div class="grow"></div>
-      <button class="btn-primary" id="new-tpl">New message set</button>
+      <button class="btn-primary" id="new-tpl">New campaign</button>
     </div>
     <div class="card-b flush" id="tpl-list"></div>
   </div>
 
   <div class="card">
     <div class="card-h bordered">
-      <div class="card-t">LinkedIn messages</div>
+      <div class="card-t">LinkedIn campaigns</div>
     </div>
     <div class="card-b flush" id="li-tpl-list"></div>
   </div>
@@ -429,7 +429,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
           <span class="mono">{{company_name}}</span> are filled in for each recipient automatically.</div>
       </div>
       <div>
-        <label class="f">Send to which campaign</label>
+        <label class="f">Which sending campaign these go into</label>
         <select id="et-camp"><option value="">Choose a campaign…</option></select>
         <div class="hint" id="et-campinfo"></div>
         <label class="f" style="margin-top:14px">Preview</label>
@@ -866,7 +866,7 @@ function eflash(t, kind){
   if (t) setTimeout(() => { $('emsg').innerHTML = ''; }, 8000);
 }
 
-// Plain-language status for a message set.
+// Plain-language status for a campaign.
 function mStatus(t){
   if (t.running) return { key:'running', label:'Approved and running', cls:'m-done' };
   if (t.status === 'approved') return { key:'approved', label:'Approved', cls:'m-copy' };
@@ -887,10 +887,10 @@ function renderTiles(){
       <div class="hint" style="margin:6px 0 0">${live} approved and running · ${list.length} in total</div>
     </div>`;
   };
-  $('m-tiles').innerHTML = box('email', 'Cold outreach messages') + box('linkedin', 'LinkedIn messages');
+  $('m-tiles').innerHTML = box('email', 'Cold outreach campaigns') + box('linkedin', 'LinkedIn campaigns');
 }
 
-// One row per message set: everything visible, no dropdown to dig through.
+// One row per campaign: everything visible, no dropdown to dig through.
 function tplRow(t){
   const st = mStatus(t);
   const n = t.steps_count || (t.steps && t.steps.length) || 1;
@@ -909,7 +909,7 @@ function tplRow(t){
     <div class="av">${tick}</div>
     <div class="p-main">
       <div class="p-name">${esc(t.name)} <span class="mini ${st.cls}">${esc(st.label)}</span></div>
-      <div class="p-role" title="${esc(t.subject || '')}">${n} message${n === 1 ? '' : 's'} in this set${
+      <div class="p-role" title="${esc(t.subject || '')}"><b>${n} email${n === 1 ? '' : 's'}</b> in this campaign${
         t.subject ? ' · ' + esc(t.subject) : ''}</div>
       <div class="p-why">${st.key === 'approved' || st.key === 'running'
         ? 'Approved by ' + esc(t.approved_by || '—') + (t.approved_at ? ' · ' + new Date(t.approved_at).toLocaleString() : '')
@@ -925,10 +925,10 @@ function renderTemplates(){
   const of = ch => E.templates.filter(t => (t.channel || 'email') === ch);
   const email = of('email'), li = of('linkedin');
   $('tpl-list').innerHTML = email.length ? email.map(tplRow).join('')
-    : `<div class="empty"><div class="empty-t">No email messages yet</div>
-       Add the messages your team has written, then approve one to send it.</div>`;
+    : `<div class="empty"><div class="empty-t">No email campaigns yet</div>
+       Add a campaign with the emails your team has written, then approve it to send.</div>`;
   $('li-tpl-list').innerHTML = li.length ? li.map(tplRow).join('')
-    : `<div class="empty"><div class="empty-t">No LinkedIn messages yet</div>
+    : `<div class="empty"><div class="empty-t">No LinkedIn campaigns yet</div>
        LinkedIn copy is not connected to a sender yet — this block is ready for it.</div>`;
   renderTiles();
 }
@@ -941,7 +941,7 @@ function renderLaunches(){
   $('launch-list').innerHTML = E.launches.map(l => `
     <div class="person">
       <div class="p-main">
-        <div class="p-name">${esc(l.template_name || 'message set')}
+        <div class="p-name">${esc(l.template_name || 'campaign')}
           ${l.error ? '<span class="mini m-nocopy">failed</span>'
             : l.started ? '<span class="mini m-done">running</span>'
                         : '<span class="mini m-inv">copy loaded only</span>'}
@@ -1061,8 +1061,8 @@ function openTpl(id){
   const may = E.viewer?.can_launch || E.viewer?.is_admin;
   const locked = st.key === 'running';
 
-  $('et-title').textContent = !t ? 'New message set'
-    : locked ? 'Already running — read only' : 'Review these messages';
+  $('et-title').textContent = !t ? 'New campaign'
+    : locked ? 'Already running — read only' : 'Review this campaign';
   $('et-name').value = t?.name || '';
   E.steps = (t?.steps && t.steps.length)
     ? t.steps.map((x, i) => ({ subject:x.subject||'', body:x.body||'', delay_days: i ? (x.delay_days||3) : 0 }))
@@ -1074,7 +1074,7 @@ function openTpl(id){
   $('et-lock').innerHTML = locked
     ? `<div class="callout" style="margin-top:12px"><b>This is already lined up and running.</b>
         Approved by ${esc(t.approved_by || '—')}${t.approved_at ? ' on ' + esc(new Date(t.approved_at).toLocaleString()) : ''}.
-        It cannot be approved or edited again. To change the copy, make a new message set.</div>`
+        It cannot be approved or edited again. To change the copy, make a new campaign.</div>`
     : t && st.key === 'rejected'
       ? `<div class="callout" style="margin-top:12px"><b>Rejected</b> by ${esc(t.rejected_by || '—')}${
           t.reject_note ? ' — ' + esc(t.reject_note) : ''}. Edit it and approve when it reads right.</div>`
@@ -1084,8 +1084,12 @@ function openTpl(id){
   $('et-save').classList.toggle('hide', locked || !E.viewer?.can_edit_templates);
   $('et-approve').classList.toggle('hide', locked || !t || !may);
   $('et-reject').classList.toggle('hide', locked || !t || !may);
+  const nEmails = E.steps.length;
+  $('et-approve').textContent = nEmails > 1
+    ? `Approve all ${nEmails} emails and send` : 'Approve and send';
   $('et-foot').textContent = locked ? 'Read only.'
-    : may ? 'Approving writes these messages into the campaign and starts sending.'
+    : may ? `One approval covers ${nEmails === 1 ? 'this email' : 'all ' + nEmails + ' emails'} `
+            + 'in this campaign — the whole sequence is written and started together.'
           : 'You can edit and save. Approving is restricted.';
 
   // The campaign is chosen here, at approval time.
@@ -1124,8 +1128,9 @@ async function approveTpl(){
   const camp = (E.campaigns || []).find(c => String(c.id) === String(campaign_id));
   const who = (E.campLeads === null || E.campLeads === undefined)
     ? 'its people' : `${E.campLeads.toLocaleString()} ${E.campLeads === 1 ? 'person' : 'people'}`;
+  const nE = (t.steps_count || (t.steps && t.steps.length) || 1);
   if (!confirm(`Approve "${t.name}" and start sending to ${who} in "${camp?.name}"?`
-    + `\n\nThis writes the messages into that campaign and starts it.`)) return;
+    + `\n\nAll ${nE} email${nE === 1 ? '' : 's'} in this campaign are written into it and it starts sending.`)) return;
 
   const go = async (overwrite) => eapi('/api/approve', { method:'POST', body:JSON.stringify({
     template_id: t.id, campaign_id: Number(campaign_id), campaign_name: camp?.name || null, overwrite })});
