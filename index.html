@@ -2128,7 +2128,7 @@ function gSwitches(){
       'Master switch for the LinkedIn side. With this off, nobody is added to a LinkedIn campaign at all.')
     + band('email_enabled', 'Email', s.email_enabled,
       s.email_master_enabled
-        ? 'Master switch for the email side. It also looks up addresses — with this off, no lookups happen.'
+        ? 'Whether people who engage get emailed at all. With this off we do not even go looking for their addresses.'
         : '<b style="color:var(--amber)">The tool-wide email switch under People is off</b>, so nothing can be emailed even with this on.');
 }
 
@@ -2171,17 +2171,72 @@ function gSetup(){
     </div>
     <div class="hint">A group with nothing ticked collects people but sends nowhere.</div>
 
-    ${admin ? `<label class="f" style="margin-top:18px">Address lookup</label>
-      <div class="row">
-        <input id="g-hook" placeholder="https://… the enrichment table's webhook URL"
-          value="${esc(s.enrichment_configured ? '' : '')}" style="flex:1" autocomplete="off">
-        <button id="g-hook-save">Save</button>
+    ${admin ? emailFinderBlock() : ''}`;
+}
+
+// Written for somebody who has never heard of a webhook. The one fact that explains this
+// whole section: liking a post tells us who somebody is on LinkedIn and nothing else — an
+// email address is simply not part of what we get, so it has to be found elsewhere.
+function emailFinderBlock(){
+  const s = G.state, c = G.counts || {};
+  const on = s.enrichment_configured;
+
+  const found = (c.email_ready || 0) + (c.email_sent || 0);
+  const state = !on
+    ? `<span class="mini m-nocopy">not set up</span>
+       <span class="hint" style="margin:0">Nobody is being emailed. They can still be
+       contacted on LinkedIn.</span>`
+    : `<span class="mini m-copy">working</span>
+       <span class="hint" style="margin:0">${found.toLocaleString()} ${found === 1 ? 'address' : 'addresses'} found so far${
+         c.awaiting_email ? ` · ${c.awaiting_email} still being looked up` : ''}${
+         c.no_email_found ? ` · ${c.no_email_found} nobody could find` : ''}.</span>`;
+
+  return `
+    <div class="grp" style="margin:22px -18px 0">
+      <div class="grp-t">Finding their email address</div>
+      <div class="grow"></div>${state}
+    </div>
+
+    <div class="card-s" style="width:auto;margin:14px 0 0">
+      When somebody likes or comments on a post, all we learn is who they are on LinkedIn.
+      <b>Their email address is never part of it.</b> So to email anyone, we have to send their
+      name and profile to a tool that goes and finds a work address for them.
+    </div>
+
+    <ol class="hint" style="margin:10px 0 0;padding-left:20px;line-height:1.7">
+      <li>We send them their name, LinkedIn profile and company.</li>
+      <li>The tool looks for a work email address.</li>
+      <li>If it finds one, that person is added to your email campaign as well as LinkedIn.
+        If it finds nothing, they are <b>LinkedIn only</b> — we never invent an address.</li>
+    </ol>
+
+    <label class="f" style="margin-top:16px">Paste the link from Clay</label>
+    <div class="row">
+      <input id="g-hook" placeholder="https://api.clay.com/v3/sources/webhook/…"
+        style="flex:1" autocomplete="off">
+      <button class="${on ? '' : 'btn-primary'}" id="g-hook-save">${on ? 'Replace' : 'Connect'}</button>
+    </div>
+    <div class="hint">In Clay: open your table → <b>Add source</b> → <b>Pull in data from a
+      Webhook</b> → copy the link it gives you and paste it here.${on
+        ? ' Saving a new link replaces the old one. Clearing the box turns email lookups off entirely.'
+        : ''}</div>
+
+    <details style="margin-top:14px">
+      <summary>Settings for whoever builds the Clay table</summary>
+      <div class="hint" style="margin-top:0">Clay has to send the address back to us. Add an
+        <b>HTTP API</b> step at the end of the table with these:</div>
+      <div class="dl" style="margin:10px -18px 0">
+        <div><div class="dt">Send it to</div>
+          <div class="mono" style="margin-top:3px;overflow-wrap:anywhere">${esc(s.callback_url || '')}</div></div>
+        <div><div class="dt">Header</div>
+          <div class="mono" style="margin-top:3px">X-Engine-Secret</div>
+          <div class="dn">Ask an admin for the value — it is not shown on screen.</div></div>
+        <div><div class="dt">Body</div>
+          <div class="mono" style="margin-top:3px;overflow-wrap:anywhere">{"lead_id":"{{lead_id}}","email":"{{work_email}}","found":true}</div>
+          <div class="dn">We send <span class="mono">lead_id</span> with every person, so hand
+            the same one straight back.</div></div>
       </div>
-      <div class="hint">${s.enrichment_configured
-        ? '<b>A lookup is connected.</b> Saving a new URL replaces it; saving an empty box disconnects it and stops all lookups.'
-        : 'Not connected. Until it is, engagers have no email address and the email half cannot run.'}
-        Addresses come back to <span class="mono">${esc(s.callback_url || '')}</span>
-        with the shared secret in an <span class="mono">X-Engine-Secret</span> header.</div>` : ''}`;
+    </details>`;
 }
 
 function gRow(l){
