@@ -2198,45 +2198,67 @@ function emailFinderBlock(){
     </div>
 
     <div class="card-s" style="width:auto;margin:14px 0 0">
-      When somebody likes or comments on a post, all we learn is who they are on LinkedIn.
-      <b>Their email address is never part of it.</b> So to email anyone, we have to send their
-      name and profile to a tool that goes and finds a work address for them.
+      <b>This part is optional.</b> LinkedIn works with nothing set up here. But a like or a
+      comment only tells us who somebody is on LinkedIn — <b>an email address is never part of
+      it</b> — so emailing them means asking a separate tool to go and find one. Skip this and
+      everybody simply gets LinkedIn only.
     </div>
 
-    <ol class="hint" style="margin:10px 0 0;padding-left:20px;line-height:1.7">
-      <li>We send them their name, LinkedIn profile and company.</li>
-      <li>The tool looks for a work email address.</li>
-      <li>If it finds one, that person is added to your email campaign as well as LinkedIn.
-        If it finds nothing, they are <b>LinkedIn only</b> — we never invent an address.</li>
-    </ol>
+    <div class="callout" style="border-color:var(--purple-line);background:var(--purple-soft)">
+      <b style="color:var(--purple)">A blank table and this link is not enough on its own.</b>
+      The link only carries people <i>into</i> Clay. Clay then needs two more steps: one that
+      finds the address, and one that sends it back here — otherwise we never learn it and
+      nobody can be emailed. All three are below.
+    </div>
 
-    <label class="f" style="margin-top:16px">Paste the link from Clay</label>
-    <div class="row">
+    <div class="grp" style="margin:18px -18px 0"><div class="grp-t">Step 1 — make the link</div>
+      <div class="grow"></div><span class="grp-c">in Clay</span></div>
+    <ol class="hint" style="margin:12px 0 0;padding-left:20px;line-height:1.75">
+      <li>In Clay, create a new blank table.</li>
+      <li>Click <b>Add source</b> → <b>Pull in data from a Webhook</b>.</li>
+      <li>Copy the link Clay shows you, paste it here and press ${on ? '<b>Replace</b>' : '<b>Connect</b>'}.</li>
+    </ol>
+    <div class="row" style="margin-top:10px">
       <input id="g-hook" placeholder="https://api.clay.com/v3/sources/webhook/…"
         style="flex:1" autocomplete="off">
       <button class="${on ? '' : 'btn-primary'}" id="g-hook-save">${on ? 'Replace' : 'Connect'}</button>
     </div>
-    <div class="hint">In Clay: open your table → <b>Add source</b> → <b>Pull in data from a
-      Webhook</b> → copy the link it gives you and paste it here.${on
-        ? ' Saving a new link replaces the old one. Clearing the box turns email lookups off entirely.'
-        : ''}</div>
+    ${on ? '<div class="hint">A link is saved. Clearing the box turns email off completely.</div>' : ''}
 
-    <details style="margin-top:14px">
-      <summary>Settings for whoever builds the Clay table</summary>
-      <div class="hint" style="margin-top:0">Clay has to send the address back to us. Add an
-        <b>HTTP API</b> step at the end of the table with these:</div>
-      <div class="dl" style="margin:10px -18px 0">
-        <div><div class="dt">Send it to</div>
-          <div class="mono" style="margin-top:3px;overflow-wrap:anywhere">${esc(s.callback_url || '')}</div></div>
-        <div><div class="dt">Header</div>
-          <div class="mono" style="margin-top:3px">X-Engine-Secret</div>
-          <div class="dn">Ask an admin for the value — it is not shown on screen.</div></div>
-        <div><div class="dt">Body</div>
-          <div class="mono" style="margin-top:3px;overflow-wrap:anywhere">{"lead_id":"{{lead_id}}","email":"{{work_email}}","found":true}</div>
-          <div class="dn">We send <span class="mono">lead_id</span> with every person, so hand
-            the same one straight back.</div></div>
-      </div>
-    </details>`;
+    <div class="grp" style="margin:18px -18px 0"><div class="grp-t">Step 2 — send one test person</div>
+      <div class="grow"></div><span class="grp-c">${on ? 'here' : 'after step 1'}</span></div>
+    <div class="hint" style="margin-top:12px">Clay shows no columns until a row actually
+      arrives, so you cannot build anything yet. This sends <b>one invented person</b> — never a
+      real prospect — just so the columns appear in your table.</div>
+    <div class="row" style="margin-top:10px">
+      <button id="g-hook-test" ${on ? '' : 'disabled'}>Send one test person</button>
+      <span class="hint" style="margin:0" id="g-test-state">${on
+        ? 'Then look in Clay: you should see a row called Sample Person.'
+        : 'Save the link first.'}</span>
+    </div>
+
+    <div class="grp" style="margin:18px -18px 0"><div class="grp-t">Step 3 — find the address and send it back</div>
+      <div class="grow"></div><span class="grp-c">in Clay</span></div>
+    <ol class="hint" style="margin:12px 0 0;padding-left:20px;line-height:1.75">
+      <li><b>Add enrichment</b> → search <b>Find Work Email</b> → point it at the
+        <span class="mono">linkedin_url</span> column. This is the step that uses Clay credits.</li>
+      <li><b>Add enrichment</b> → <b>HTTP API</b>, and fill it in exactly as below. This is what
+        sends the address back to us.</li>
+      <li>Delete the Sample Person row, then turn <b>Email</b> on at the top of this page.</li>
+    </ol>
+    <div class="dl" style="margin:12px -18px 0">
+      <div><div class="dt">Method</div><div class="mono" style="margin-top:3px">POST</div></div>
+      <div><div class="dt">URL</div>
+        <div class="mono" style="margin-top:3px;overflow-wrap:anywhere">${esc(s.callback_url || '')}</div></div>
+      <div><div class="dt">Header</div>
+        <div class="mono" style="margin-top:3px">X-Engine-Secret</div>
+        <div class="dn">Ask an admin for the value — deliberately not shown on screen.</div></div>
+      <div><div class="dt">Body</div>
+        <div class="mono" style="margin-top:3px;overflow-wrap:anywhere">{"lead_id":"{{lead_id}}","email":"{{work_email}}","found":true}</div>
+        <div class="dn">Swap <span class="mono">work_email</span> for whatever Clay named its
+          email column. <span class="mono">lead_id</span> is sent with every person — hand the
+          same one straight back.</div></div>
+    </div>`;
 }
 
 function gRow(l){
@@ -2647,8 +2669,25 @@ $('g-switches').addEventListener('click', e => {
   gToggle(b.dataset.gsw, b.dataset.on === '1');
 });
 $('g-setup').addEventListener('click', e => {
-  if (e.target.closest('#g-hook-save')) gSaveHook();
+  if (e.target.closest('#g-hook-save')) return void gSaveHook();
+  if (e.target.closest('#g-hook-test')) gSendTestPerson();
 });
+
+// Clay cannot show a column until a row exists, so this is the step that makes step 3
+// followable at all. It sends an invented person, never anyone real.
+async function gSendTestPerson(){
+  const btn = $('g-hook-test'), state = $('g-test-state');
+  btn.disabled = true;
+  state.textContent = 'Sending…';
+  try {
+    await api('/api/enrich/test', { method:'POST', body:'{}' });
+    state.innerHTML = '<b style="color:var(--green)">Sent.</b> Open your Clay table — there '
+      + 'should now be a row called <b>Sample Person</b>, with a '
+      + '<span class="mono">linkedin_url</span> column to point the email step at.';
+  } catch (e) {
+    state.innerHTML = `<b style="color:var(--red)">${esc(scrub(e.message))}</b>`;
+  } finally { btn.disabled = false; }
+}
 $('g-filters').addEventListener('click', e => {
   const b = e.target.closest('[data-gfil]'); if (!b) return;
   G.filter = b.dataset.gfil; G.sel.clear(); gRenderList();
