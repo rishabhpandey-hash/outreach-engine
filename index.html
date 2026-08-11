@@ -74,6 +74,10 @@ header{background:var(--white);border-bottom:1px solid var(--line);
 /* the messaging row has two blocks, not three — let them fill the width */
 #m-tiles{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 #r-tiles{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+#g-tiles{grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+/* An address sits inline on a queue row and has to stay readable next to a name. */
+.addr{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;overflow-wrap:anywhere}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
 /* ---------- report ---------- */
 .rep-back{margin-bottom:14px}
 .rep-title{font-size:22px;font-weight:700;letter-spacing:-.02em}
@@ -290,6 +294,7 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   <span class="badge-int">Internal</span>
   <div class="tabs" id="views" style="margin-left:6px">
     <button class="tab on" data-view="linkedin">LinkedIn</button>
+    <button class="tab hide" data-view="engage" id="tab-engage">Post engagement<span class="n" id="eg-n"></span></button>
     <button class="tab" data-view="email">Messaging</button>
     <button class="tab hide" data-view="results" id="tab-results">Results</button>
     <button class="tab hide" data-view="people" id="tab-people">People</button>
@@ -321,6 +326,55 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   </div>
 
   <div id="pair-detail"></div>
+</div>
+
+<div class="page hide" id="view-engage">
+  <div id="gmsg"></div>
+
+  <div class="sum" id="g-tiles"></div>
+
+  <div class="card">
+    <div class="card-h bordered">
+      <div class="card-t">What happens when someone engages</div>
+      <div class="grow"></div>
+      <button id="g-check">Look for new posts</button>
+      <button class="btn-primary" id="g-run">Run it now</button>
+    </div>
+    <div class="card-s" style="padding:0 18px 14px">
+      Every hour this reads the posts your sending profiles have scraped, brings in everyone who
+      liked or commented, files each person, writes their message, looks up an email address, and
+      — while the automatic switch is on — puts them into a LinkedIn campaign and an email
+      campaign at the same time. Nothing is sent from here: each platform sends only while its
+      own campaign is live.
+    </div>
+    <div id="g-switches"></div>
+    <div class="card-b" id="g-lastrun" style="padding-top:12px"></div>
+  </div>
+
+  <div class="card" id="g-setup-card">
+    <div class="card-h bordered">
+      <div class="card-t">Where people are sent</div>
+      <div class="grow"></div>
+      <button id="g-wire">Choose the campaigns</button>
+    </div>
+    <div class="card-b" id="g-setup"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h bordered">
+      <div class="card-t">Everyone who engaged</div>
+      <div class="grow"></div>
+      <div class="tabs" id="g-filters"></div>
+    </div>
+    <div class="bulk hide" id="g-bulk"></div>
+    <div class="card-b flush" id="g-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h bordered"><div class="card-t">The posts they came from</div>
+      <div class="card-s">Scrape a post in the outreach tool and it turns up here on its own.</div></div>
+    <div class="card-b flush" id="g-batches"></div>
+  </div>
 </div>
 
 <div class="page hide" id="view-email">
@@ -453,6 +507,78 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   </div>
 </dialog>
 
+<dialog id="eg-dlg">
+  <div class="d-h"><strong id="eg-title">Review</strong><button id="eg-x">Close</button></div>
+  <div class="d-b">
+    <div id="eg-who"></div>
+
+    <label class="f" style="margin-top:16px">Which group they belong in</label>
+    <select id="eg-fit"></select>
+    <div class="hint" id="eg-why" style="margin-top:5px"></div>
+
+    <label class="f" style="margin-top:16px">Their email address</label>
+    <div class="row">
+      <input id="eg-email" placeholder="nobody@example.com" style="flex:1" autocomplete="off">
+      <button id="eg-email-save">Save address</button>
+    </div>
+    <div class="hint" id="eg-email-state" style="margin-top:5px"></div>
+
+    <div id="eg-copy">
+      <label class="f" style="margin-top:18px">Connection request note
+        <span style="color:var(--ink2);font-weight:400">— 290 characters, LinkedIn's limit</span></label>
+      <textarea id="eg-note" rows="3"></textarea>
+      <div class="hint" id="eg-note-count" style="margin-top:4px"></div>
+
+      <label class="f" style="margin-top:14px">The message</label>
+      <textarea id="eg-msg" rows="9"></textarea>
+      <div class="hint">Sent as a direct message if they are already a connection, or once they
+        accept the request if they are not.</div>
+    </div>
+  </div>
+  <div class="d-f">
+    <span class="hint" id="eg-foot" style="margin:0 auto 0 0"></span>
+    <button class="btn-no" id="eg-skip">Skip this person</button>
+    <button id="eg-save">Save</button>
+    <button class="btn-primary" id="eg-approve">Approve</button>
+  </div>
+</dialog>
+
+<dialog id="wire-dlg">
+  <div class="d-h"><strong>Where each group is sent</strong><button id="w-x">Close</button></div>
+  <div class="d-b">
+    <p class="hint" id="w-msg" style="margin:0 0 14px"></p>
+    <label class="f">Group</label>
+    <select id="w-fit"></select>
+
+    <div class="grp" style="margin:18px -18px 0"><div class="grp-t">LinkedIn</div>
+      <div class="grow"></div><span class="grp-c" id="w-li-note"></span></div>
+
+    <label class="f" style="margin-top:16px">Sending profile — whose LinkedIn account this goes out from</label>
+    <select id="w-sender"></select>
+    <label class="f" style="margin-top:14px">Whose seat in the outreach tool</label>
+    <select id="w-member"></select>
+
+    <label class="f" style="margin-top:14px">Campaign for connection requests
+      <span style="color:var(--ink2);font-weight:400">— people who are not connected yet</span></label>
+    <select id="w-invite"></select>
+    <label class="f" style="margin-top:14px">Campaign for direct messages
+      <span style="color:var(--ink2);font-weight:400">— people already connected</span></label>
+    <select id="w-dm"></select>
+    <div class="hint">Leave either one empty and that half simply does not run. Both may be the
+      same campaign if it is built to handle both.</div>
+
+    <div class="grp" style="margin:18px -18px 0"><div class="grp-t">Email</div>
+      <div class="grow"></div><span class="grp-c" id="w-em-note"></span></div>
+    <label class="f" style="margin-top:16px">Campaign to add them to</label>
+    <select id="w-email"></select>
+    <div class="hint">The copy in that campaign is whatever your team already wrote and approved
+      under Messaging. This only adds the person, along with a merge field saying what they did
+      on the post — <span class="mono">{{engage_line}}</span>.</div>
+  </div>
+  <div class="d-f"><button id="w-cancel">Cancel</button>
+    <button class="btn-primary" id="w-save">Save this group</button></div>
+</dialog>
+
 <dialog id="pair-dlg">
   <div class="d-h"><strong>Pair a campaign</strong><button id="np-x">Close</button></div>
   <div class="d-b">
@@ -577,8 +703,13 @@ async function api(path, opts = {}){
     headers:{ Authorization:'Bearer ' + t, 'Content-Type':'application/json', ...(opts.headers || {}) } });
   let b = null; try { b = await res.json(); } catch (_) {}
   if (res.status === 401) { show('login'); throw new Error('no session'); }
-  if (res.status === 403) throw new Error('forbidden');
-  if (!res.ok || b?.ok === false) throw new Error(b?.error ? b.error + (b.detail ? ': ' + b.detail : '') : 'HTTP ' + res.status);
+  // A refusal usually comes with the reason and what to do about it — passing that through
+  // is the difference between "forbidden" and "ask an admin to turn this on for you".
+  if (!res.ok || b?.ok === false) {
+    const e = new Error(b?.detail || (b?.error ? String(b.error).replace(/_/g, ' ') : 'HTTP ' + res.status));
+    e.code = b?.error; e.info = b;
+    throw e;
+  }
   return b;
 }
 
@@ -820,9 +951,17 @@ $('np-x').addEventListener('click', () => $('pair-dlg').close());
 
 
 
+// Refresh means "refresh what I am looking at", not always the pairs screen.
 $('refresh').addEventListener('click', async () => {
+  const on = document.querySelector('#views .tab.on')?.dataset.view;
   showLoader('Refreshing', ['Fetching the latest\u2026', 'Nearly done\u2026']);
-  try { await loadPairs(); } catch (e) { flash(scrub(e.message), 'err'); } finally { hideLoader(); }
+  try {
+    if (on === 'engage') await loadEngage(true);
+    else if (on === 'email') await loadEmail(true);
+    else if (on === 'people') { await loadUsers(true); await loadSendState(); }
+    else if (on === 'results') await loadResults(true);
+    else await loadPairs();
+  } catch (e) { flash(scrub(e.message), 'err'); } finally { hideLoader(); }
 });
 $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
 $('denied-out').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
@@ -1206,10 +1345,12 @@ function switchView(v){
   for (const t of document.querySelectorAll('#views .tab'))
     t.classList.toggle('on', t.dataset.view === v);
   $('view-linkedin').classList.toggle('hide', v !== 'linkedin');
+  $('view-engage').classList.toggle('hide', v !== 'engage');
   $('view-email').classList.toggle('hide', v !== 'email');
   $('view-people').classList.toggle('hide', v !== 'people');
   $('view-results').classList.toggle('hide', v !== 'results');
   $('view-report').classList.add('hide');
+  if (v === 'engage') loadEngage(false);
   if (v === 'email') loadEmail(false);
   if (v === 'people') { loadUsers(); loadSendState(); }
   if (v === 'results') loadResults(false);
@@ -1873,6 +2014,616 @@ $('launch-list').addEventListener('click', e => {
 
 $('send-toggle').addEventListener('click', toggleSending);
 
+// ---------------------------------------------------------------- post engagement
+//
+// One audience, two channels, from a single trigger: somebody touched one of our posts.
+// This screen shows every one of those people, what we worked out about them, and what is
+// going to happen to them on each channel — before it happens.
+
+const SENDABLE = ['partner_agency', 'b2b', 'membership'];
+
+const FIT_LABEL = {
+  partner_agency:'Partner or agency', b2b:'B2B company', membership:'Membership body',
+  review:'Needs a look', exclude:'Not a fit', unclassified:'Not filed yet',
+};
+const FIT_CLS = {
+  partner_agency:'m-done', b2b:'m-copy', membership:'m-done',
+  review:'m-nocopy', exclude:'m-inv', unclassified:'m-inv',
+};
+const G_STATUS = {
+  classified:['waiting','m-inv'], approved:['approved','m-copy'], rejected:['skipped','m-inv'],
+  pushed:['handed over','m-done'], already_in_outreach:['already in outreach','m-inv'],
+  push_failed:['handover failed','m-nocopy'],
+};
+
+const G_FILTERS = [
+  ['look',     'Need a look',    l => l.fit === 'review' && l.status === 'classified'],
+  ['waiting',  'Waiting',        l => l.status === 'classified' && SENDABLE.includes(l.fit)],
+  ['approved', 'Approved',       l => l.status === 'approved'],
+  ['done',     'Handed over',    l => l.status === 'pushed'],
+  ['out',      'Not going out',  l => l.fit === 'exclude'
+                                   || ['rejected','already_in_outreach','push_failed'].includes(l.status)],
+  ['all',      'Everyone',       () => true],
+];
+
+let G = { leads:[], counts:{}, batches:[], state:{}, viewer:null,
+          filter:null, sel:new Set(), editing:null, wiring:null, loaded:false };
+
+function gflash(t, kind){
+  $('gmsg').innerHTML = t ? `<div class="flash ${kind}">${esc(scrub(t))}</div>` : '';
+  if (t) setTimeout(() => { $('gmsg').innerHTML = ''; }, 9000);
+}
+
+// What each channel is going to do to this person, in the words a reader would use.
+function liBit(l){
+  if (l.pushed_at) return [l.li_mode === 'dm' ? 'messaged on LinkedIn' : 'invited on LinkedIn', 'm-done'];
+  if (l.push_error) return ['LinkedIn handover failed', 'm-nocopy'];
+  return l.li_mode === 'dm'
+    ? ['already connected — will message', 'm-conn']
+    : ['will send a connection request', 'm-inv'];
+}
+
+function emailBit(l){
+  if (l.email_pushed_at) return ['in an email campaign', 'm-done'];
+  if (l.email_push_error) return ['email handover failed', 'm-nocopy'];
+  if (l.email) return [l.email, 'm-copy'];
+  if (l.email_status === 'requested') return ['looking up their address', 'm-inv'];
+  if (l.email_status === 'not_found') return ['no address found — LinkedIn only', 'm-nocopy'];
+  if (l.email_status === 'skipped') return ['not being emailed', 'm-inv'];
+  return G.state.email_enabled ? ['address not looked up yet', 'm-inv'] : ['email is switched off', 'm-inv'];
+}
+
+function whatTheyDid(l){
+  if (l.engagement_type === 'comment') return ['commented', 'm-copy'];
+  const how = (l.action_value || '').toLowerCase();
+  return [how && how !== 'like' ? how.toLowerCase() : 'liked', 'm-inv'];
+}
+
+function gTiles(){
+  const c = G.counts || {};
+  const waiting = (c.by_status || {}).classified || 0;
+  const emailNote = !G.state.email_enabled
+    ? 'Emailing engagers is switched off.'
+    : [`${(c.email_ready || 0).toLocaleString()} ready to go`,
+       c.awaiting_email ? `${c.awaiting_email} being looked up` : null,
+       c.no_email_found ? `${c.no_email_found} with no address` : null].filter(Boolean).join(' · ');
+
+  const tiles = [
+    [c.needs_a_look || 0, 'Need a look',
+      'Filed as unclear, so they always wait for a person — automatic or not.'],
+    [waiting, 'Waiting to go out',
+      `${(c.to_invite || 0).toLocaleString()} to invite · ${(c.to_dm || 0).toLocaleString()} already connected`],
+    [c.linkedin_sent || 0, 'In a LinkedIn campaign',
+      'A connection request, or a direct message if they were already connected.'],
+    [c.email_sent || 0, 'In an email campaign', emailNote],
+  ];
+  $('g-tiles').innerHTML = tiles.map(([v, l, h]) => `<div class="s-box">
+    <div class="s-n">${Number(v || 0).toLocaleString()}</div>
+    <div class="s-l">${esc(l)}</div>
+    <div class="hint" style="margin:6px 0 0">${esc(h)}</div></div>`).join('');
+
+  const pending = (c.needs_a_look || 0) + waiting;
+  $('eg-n').textContent = pending ? ' ' + pending : '';
+}
+
+function gSwitches(){
+  const s = G.state, admin = !!G.viewer?.is_admin;
+  const band = (key, title, on, help) => `<div class="grp">
+    <div style="min-width:0">
+      <div class="grp-t">${esc(title)}</div>
+      <div class="grp-c" style="font-size:12.5px">${help}</div>
+    </div>
+    <div class="grow"></div>
+    <span class="mini ${on ? 'm-copy' : 'm-nocopy'}">${on ? 'on' : 'off'}</span>
+    ${admin ? `<button class="${on ? 'btn-no' : 'btn-primary'}" data-gsw="${key}"
+        data-on="${on ? 1 : 0}">${on ? 'Turn off' : 'Turn on'}</button>` : ''}
+  </div>`;
+
+  $('g-switches').innerHTML =
+    band('auto_send', 'Send without asking anyone', s.automatic,
+      s.automatic
+        ? 'People in a clear group are approved and handed over by the hourly check. Anyone unclear still waits.'
+        : 'Everyone is prepared and then waits for someone to approve them.')
+    + band('linkedin_enabled', 'LinkedIn', s.linkedin_enabled,
+      'Master switch for the LinkedIn side. With this off, nobody is added to a LinkedIn campaign at all.')
+    + band('email_enabled', 'Email', s.email_enabled,
+      s.email_master_enabled
+        ? 'Master switch for the email side. It also looks up addresses — with this off, no lookups happen.'
+        : '<b style="color:var(--amber)">The tool-wide email switch under People is off</b>, so nothing can be emailed even with this on.');
+}
+
+function gLastRun(){
+  const s = G.state, lr = s.last_run || {};
+  const when = lr.at || lr.ran_at || lr.created_at || lr.last_run_at;
+  const bits = [];
+  bits.push(when ? 'Last checked ' + new Date(when).toLocaleString()
+                 : 'The hourly check has not recorded a run yet.');
+  if (lr.brought_in != null) bits.push(`${Number(lr.brought_in).toLocaleString()} brought in`);
+  if (lr.posts_pulled != null) bits.push(`${lr.posts_pulled} posts read`);
+  bits.push('checks itself every hour');
+
+  const missing = [];
+  if (!s.enrichment_configured && s.email_enabled) missing.push('no address lookup is set up');
+  const w = s.wiring || {};
+  const unwired = SENDABLE.filter(f => !w[f]?.invite && !w[f]?.dm);
+  if (unwired.length) missing.push(
+    `${unwired.map(f => FIT_LABEL[f].toLowerCase()).join(' and ')} ${unwired.length === 1 ? 'has' : 'have'} no LinkedIn campaign`);
+
+  $('g-lastrun').innerHTML = `<div class="hint" style="margin:0">${esc(bits.join(' · '))}</div>`
+    + (missing.length ? `<div class="callout" style="margin-top:12px">
+        <b>Not everything is connected yet.</b> ${esc(missing.join('; '))}. People are still being
+        collected and prepared — they just will not go anywhere until this is finished below.</div>` : '');
+}
+
+function gSetup(){
+  const s = G.state, w = s.wiring || {}, admin = !!G.viewer?.is_admin;
+  const dot = (on, label) => `<span class="mini ${on ? 'm-copy' : 'm-inv'}">${on ? '' : 'no '}${esc(label)}</span>`;
+
+  $('g-setup').innerHTML = `
+    <div class="dl" style="margin:0 -18px">
+      ${SENDABLE.map(f => `<div>
+        <div class="dt">${esc(FIT_LABEL[f])}</div>
+        <div class="chips" style="margin-top:6px">
+          ${dot(!!w[f]?.invite, 'connection requests')}
+          ${dot(!!w[f]?.dm, 'direct messages')}
+          ${dot(!!w[f]?.email, 'email campaign')}
+        </div></div>`).join('')}
+    </div>
+    <div class="hint">A group with nothing ticked collects people but sends nowhere.</div>
+
+    ${admin ? `<label class="f" style="margin-top:18px">Address lookup</label>
+      <div class="row">
+        <input id="g-hook" placeholder="https://… the enrichment table's webhook URL"
+          value="${esc(s.enrichment_configured ? '' : '')}" style="flex:1" autocomplete="off">
+        <button id="g-hook-save">Save</button>
+      </div>
+      <div class="hint">${s.enrichment_configured
+        ? '<b>A lookup is connected.</b> Saving a new URL replaces it; saving an empty box disconnects it and stops all lookups.'
+        : 'Not connected. Until it is, engagers have no email address and the email half cannot run.'}
+        Addresses come back to <span class="mono">${esc(s.callback_url || '')}</span>
+        with the shared secret in an <span class="mono">X-Engine-Secret</span> header.</div>` : ''}`;
+}
+
+function gRow(l){
+  const [fitLabel, fitCls] = [FIT_LABEL[l.fit] || l.fit, FIT_CLS[l.fit] || 'm-inv'];
+  const [stLabel, stCls] = G_STATUS[l.status] || [l.status, 'm-inv'];
+  const [did, didCls] = whatTheyDid(l);
+  const [li, liCls] = liBit(l);
+  const [em, emCls] = emailBit(l);
+  const may = G.viewer?.can_li_decide || G.viewer?.is_admin;
+  const decidable = l.status === 'classified';
+
+  const where = [l.occupation || l.headline, l.company, l.location].filter(Boolean).join(' · ');
+  return `<div class="person">
+    ${decidable && may ? `<input type="checkbox" class="tick" data-gsel="${esc(l.id)}"
+      ${G.sel.has(l.id) ? 'checked' : ''}>` : '<div style="width:16px;flex:none"></div>'}
+    <div class="av">${esc((l.name || '?').charAt(0).toUpperCase())}</div>
+    <div class="p-main">
+      <div class="p-name">${esc(l.name || 'Someone')}
+        <span class="mini ${fitCls}">${esc(fitLabel)}</span>
+        <span class="mini ${didCls}">${esc(did)}</span>
+        <span class="mini ${stCls}">${esc(stLabel)}</span></div>
+      <div class="p-role" title="${esc(where)}">${esc(where || 'No headline on their profile')}</div>
+      ${l.engage_line ? `<div class="p-why">${esc(l.engage_line)}</div>` : ''}
+      <div class="p-why">${esc(l.fit_reason || '')}</div>
+      <div class="chips">
+        <span class="mini ${liCls}">${esc(li)}</span>
+        <span class="mini ${emCls}"><span class="${l.email && !l.email_pushed_at ? 'addr' : ''}">${esc(em)}</span></span>
+        ${l.push_error ? `<span class="mini m-nocopy">${esc(String(l.push_error).slice(0, 90))}</span>` : ''}
+        ${l.email_push_error ? `<span class="mini m-nocopy">${esc(String(l.email_push_error).slice(0, 90))}</span>` : ''}
+      </div>
+    </div>
+    <div class="p-act">
+      ${decidable && may ? `<button class="btn-yes" data-gok="${esc(l.id)}">Approve</button>` : ''}
+      <button data-gopen="${esc(l.id)}">${may && decidable ? 'Review' : 'Open'}</button>
+    </div>
+  </div>`;
+}
+
+function gFilterList(){
+  const f = G_FILTERS.find(x => x[0] === G.filter) || G_FILTERS[5];
+  return G.leads.filter(f[2]);
+}
+
+function gRenderFilters(){
+  $('g-filters').innerHTML = G_FILTERS.map(([key, label, test]) => {
+    const n = G.leads.filter(test).length;
+    return `<button class="tab ${G.filter === key ? 'on' : ''}" data-gfil="${key}">${esc(label)}${
+      n ? `<span class="n">${n}</span>` : ''}</button>`;
+  }).join('');
+}
+
+function gRenderBulk(){
+  const n = G.sel.size;
+  $('g-bulk').classList.toggle('hide', !n);
+  if (!n) return;
+  $('g-bulk').innerHTML = `<b>${n} selected.</b>
+    <span class="hint" style="margin:0">Approving hands each one to the campaigns wired for their
+    group — a connection request or a message on LinkedIn, and an email if we have an address.</span>
+    <div class="grow"></div>
+    <button data-gclear="1">Clear</button>
+    <button class="btn-primary" data-gbulk="approve">Approve ${n}</button>`;
+}
+
+function gRenderList(){
+  const rows = gFilterList();
+  const f = G_FILTERS.find(x => x[0] === G.filter);
+  $('g-list').innerHTML = rows.length ? rows.map(gRow).join('')
+    : `<div class="empty"><div class="empty-t">Nobody in “${esc(f ? f[1] : '')}”</div>
+       ${G.leads.length ? 'Try another view above.'
+         : 'Nobody has engaged with a post yet, or no post has been scraped in the outreach tool.'}</div>`;
+  gRenderFilters();
+  gRenderBulk();
+}
+
+function gRenderBatches(){
+  if (!G.batches.length) {
+    $('g-batches').innerHTML = `<div class="empty">No posts read yet.</div>`;
+    return;
+  }
+  $('g-batches').innerHTML = G.batches.map(b => {
+    const mine = G.leads.filter(l => l.batch_id === b.id).length;
+    return `<div class="person">
+      <div class="p-main">
+        <div class="p-name">${esc(b.label || 'A post')}</div>
+        <div class="p-role">${b.kn_engager_count != null
+          ? `${Number(b.kn_engager_count).toLocaleString()} engaged with it` : 'engagement unknown'}
+          ${mine ? ` · ${mine} of them are in the list above` : ''}</div>
+        <div class="p-why">${esc(b.created_by || '')} ·
+          ${new Date(b.last_pulled_at || b.created_at).toLocaleString()}</div>
+      </div>
+      <div class="p-act">${b.post_url
+        ? `<a href="${esc(b.post_url)}" target="_blank" rel="noopener noreferrer">Open the post</a>` : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function gRenderAll(){
+  gTiles(); gSwitches(); gLastRun(); gSetup(); gRenderList(); gRenderBatches();
+}
+
+async function loadEngage(force){
+  if (G.loaded && !force) return;
+  try {
+    const d = await api('/api/list?limit=400');
+    G.leads = d.leads || []; G.counts = d.counts || {};
+    G.batches = d.batches || []; G.viewer = d.viewer || {};
+    G.state = {
+      automatic: !!d.automatic, linkedin_enabled: !!d.linkedin_enabled,
+      email_enabled: !!d.email_enabled, email_master_enabled: !!d.email_master_enabled,
+      enrichment_configured: !!d.enrichment_configured, callback_url: d.callback_url,
+      wiring: d.wiring || {}, last_run: d.last_run || {},
+    };
+    // Land on whichever view has something in it, so the screen is never pointlessly empty.
+    if (!G.filter) {
+      G.filter = (G.counts.needs_a_look ? 'look'
+        : (G.counts.by_status || {}).classified ? 'waiting'
+        : G.leads.length ? 'all' : 'waiting');
+    }
+    G.sel = new Set([...G.sel].filter(id => G.leads.some(l => l.id === id && l.status === 'classified')));
+    $('g-setup-card').classList.toggle('hide', !(G.viewer.is_admin || G.viewer.can_li_push));
+    $('g-wire').classList.toggle('hide', !G.viewer.is_admin);
+    gRenderAll();
+    G.loaded = true;
+  } catch (e) { gflash(e.message, 'err'); }
+}
+
+async function gToggle(key, wasOn){
+  const label = { auto_send:'sending without asking anyone', linkedin_enabled:'the LinkedIn side',
+                  email_enabled:'the email side' }[key] || key;
+  if (!wasOn && !confirm(`Turn on ${label}?\n\n`
+    + (key === 'auto_send'
+      ? 'From then on, people in a clear group are approved and put into your campaigns by the hourly check, with nobody reviewing them first.'
+      : 'People will start being added to real campaigns on that channel.'))) return;
+  try {
+    const d = await api('/api/settings', { method:'POST', body:JSON.stringify({ [key]: !wasOn }) });
+    G.state = { ...G.state, automatic: !!d.automatic, linkedin_enabled: !!d.linkedin_enabled,
+      email_enabled: !!d.email_enabled, email_master_enabled: !!d.email_master_enabled,
+      enrichment_configured: !!d.enrichment_configured, wiring: d.wiring || {} };
+    gflash(`Saved. ${label} is now ${!wasOn ? 'on' : 'off'}.`, 'ok');
+    gRenderAll();
+  } catch (e) { gflash(e.message, 'err'); }
+}
+
+async function gSaveHook(){
+  const u = $('g-hook').value.trim();
+  if (u && !/^https:\/\//i.test(u)) { gflash('That needs to be an https:// address.', 'err'); return; }
+  if (!u && !confirm('Disconnect the address lookup? No engager will get an email address after this.')) return;
+  try {
+    await api('/api/settings', { method:'POST', body:JSON.stringify({ clay_webhook_url: u }) });
+    gflash(u ? 'Address lookup connected.' : 'Address lookup disconnected.', 'ok');
+    await loadEngage(true);
+  } catch (e) { gflash(e.message, 'err'); }
+}
+
+async function gRunNow(){
+  showLoader('Running the whole cycle', ['Writing everyone’s message…',
+    'Looking up addresses…', 'Handing people to their campaigns…']);
+  try {
+    const d = await api('/api/run', { method:'POST', body:'{}' });
+    const bits = [];
+    if (d.copy_written) bits.push(`${d.copy_written} messages written`);
+    if (d.address_lookups?.requested) bits.push(`${d.address_lookups.requested} addresses being looked up`);
+    if (d.approved_automatically) bits.push(`${d.approved_automatically} approved automatically`);
+    if (!d.automatic) bits.push('automatic handover is off, so nobody was handed over');
+    gflash(bits.length ? bits.join(' · ') + '.' : 'Nothing needed doing.', 'ok');
+    await loadEngage(true);
+  } catch (e) { gflash(e.message, 'err'); }
+  finally { hideLoader(); }
+}
+
+async function gCheckPosts(){
+  showLoader('Looking for new posts', ['Reading your posts…',
+    'Bringing in whoever engaged…', 'Filing them…']);
+  try {
+    const d = await api('/api/discover', { method:'POST', body:'{}' });
+    gflash(d.brought_in
+      ? `${d.brought_in} new ${d.brought_in === 1 ? 'person' : 'people'} from ${d.posts_pulled} `
+        + `${d.posts_pulled === 1 ? 'post' : 'posts'}.`
+      : `Read ${d.post_lists_seen} ${d.post_lists_seen === 1 ? 'post' : 'posts'} and found nobody new.`, 'ok');
+    await loadEngage(true);
+  } catch (e) { gflash(e.message, 'err'); }
+  finally { hideLoader(); }
+}
+
+// What the reply says after an approval, in terms of people rather than API results.
+function handedSummary(handed){
+  const bits = [];
+  const li = handed?.linkedin || {}, em = handed?.email || {};
+  let invited = 0, messaged = 0, emailed = 0;
+  const problems = [];
+  for (const [key, r] of Object.entries(li)) {
+    const mode = key.split('|')[1];
+    if (typeof r === 'string') { problems.push(r); continue; }
+    if (r?.error) { problems.push(r.error); continue; }
+    if (mode === 'dm') messaged += r?.pushed || 0; else invited += r?.pushed || 0;
+  }
+  for (const r of Object.values(em)) {
+    if (typeof r === 'string') { problems.push(r); continue; }
+    if (r?.error) { problems.push(r.error); continue; }
+    emailed += r?.pushed || 0;
+  }
+  if (invited) bits.push(`${invited} queued for a connection request`);
+  if (messaged) bits.push(`${messaged} queued for a direct message`);
+  if (emailed) bits.push(`${emailed} added to an email campaign`);
+  if (!bits.length && !problems.length) bits.push('approved, nothing to hand over');
+  const uniq = [...new Set(problems)];
+  return bits.join(' · ') + (uniq.length ? ` — ${uniq.join('; ')}` : '');
+}
+
+async function gDecide(ids, action, fit){
+  if (!ids.length) return;
+  showLoader(action === 'approve' ? 'Handing them over' : 'Skipping them',
+    ['Recording the decision…', 'Adding them to their campaigns…']);
+  try {
+    const d = await api('/api/decide', { method:'POST', body:JSON.stringify({
+      ids, action, ...(fit ? { fit } : {}) }) });
+    gflash(action === 'approve'
+      ? `${d.affected} approved. ${handedSummary(d.handed_over)}`
+      : `${d.affected} skipped. They stay in the list but go nowhere.`, 'ok');
+    G.sel.clear();
+    await loadEngage(true);
+  } catch (e) { gflash(e.message, 'err'); }
+  finally { hideLoader(); }
+}
+
+function gOpen(id){
+  const l = G.leads.find(x => x.id === id); if (!l) return;
+  G.editing = l;
+  const may = G.viewer?.can_li_decide || G.viewer?.is_admin;
+  const decidable = l.status === 'classified';
+  const [stLabel] = G_STATUS[l.status] || [l.status];
+  const [li] = liBit(l);
+
+  $('eg-title').textContent = l.name || 'Review';
+  $('eg-who').innerHTML = `
+    <div class="p-role" style="white-space:normal">${esc([l.occupation || l.headline, l.company, l.location]
+      .filter(Boolean).join(' · ') || 'Nothing on their profile beyond their name.')}</div>
+    <div class="chips">
+      <span class="mini ${l.degree_connection === '1st' ? 'm-conn' : 'm-inv'}">${
+        esc(l.degree_connection || 'connection unknown')}</span>
+      <span class="mini m-inv">${esc(li)}</span>
+      <span class="mini m-inv">${esc(stLabel)}</span>
+      ${l.profile_url ? `<a class="mini m-done" href="${esc(l.profile_url)}" target="_blank"
+        rel="noopener noreferrer">their profile</a>` : ''}
+    </div>
+    <div class="callout" style="border-color:var(--purple-line);background:var(--purple-soft)">
+      <b style="color:var(--purple)">What they did.</b> ${esc(l.engage_line || 'Engaged with a post.')}
+      ${l.comment_text ? `<div class="hint" style="margin-top:7px">Their comment in full:
+        “${esc(l.comment_text)}”</div>` : ''}
+    </div>`;
+
+  $('eg-fit').innerHTML = Object.entries(FIT_LABEL)
+    .map(([k, v]) => `<option value="${k}"${k === l.fit ? ' selected' : ''}>${esc(v)}</option>`).join('');
+  $('eg-fit').disabled = !may || !decidable;
+  $('eg-why').textContent = l.fit_reason ? 'Filed here because ' + l.fit_reason : '';
+
+  $('eg-email').value = l.email || '';
+  $('eg-email').disabled = !may;
+  $('eg-email-save').disabled = !may;
+  const [em] = emailBit(l);
+  $('eg-email-state').innerHTML = l.email_pushed_at
+    ? `Already added to an email campaign${l.sl_campaign_id ? ' (' + l.sl_campaign_id + ')' : ''} — changing this now does nothing.`
+    : esc(em) + (l.email_source ? ` · from ${esc(l.email_source)}` : '')
+      + (G.state.email_enabled ? '' : ' · the email side is switched off');
+
+  $('eg-note').value = l.connect_note || '';
+  $('eg-msg').value = l.first_message || '';
+  const ro = !may || l.status === 'pushed';
+  $('eg-note').disabled = ro; $('eg-msg').disabled = ro;
+  // The note only ever rides on a connection request, so fade it for someone we can DM.
+  $('eg-copy').querySelector('label').style.opacity = l.li_mode === 'dm' ? '.45' : '1';
+  gNoteCount();
+
+  $('eg-save').classList.toggle('hide', ro);
+  $('eg-approve').classList.toggle('hide', !may || !decidable);
+  $('eg-skip').classList.toggle('hide', !may || !decidable);
+  $('eg-foot').textContent = l.status === 'pushed'
+    ? 'Already handed over — this is read only.'
+    : may ? '' : 'You can look, but approving is not turned on for you.';
+  $('eg-dlg').showModal();
+}
+
+function gNoteCount(){
+  const n = $('eg-note').value.length;
+  $('eg-note-count').innerHTML = G.editing?.li_mode === 'dm'
+    ? 'Not used for this person — they are already a connection, so they get the message directly.'
+    : `${n} of 290 characters${n > 290 ? ' — <b style="color:var(--red)">too long, it will be cut</b>' : ''}`;
+}
+
+async function gSaveCopy(){
+  const l = G.editing; if (!l) return;
+  try {
+    await api('/api/draft', { method:'POST', body:JSON.stringify({
+      id: l.id, connect_note: $('eg-note').value, first_message: $('eg-msg').value }) });
+    const fit = $('eg-fit').value;
+    gflash('Saved.' + (fit !== l.fit ? ' Approve to also move them to the other group.' : ''), 'ok');
+    await loadEngage(true);
+  } catch (e) { gflash(e.message, 'err'); }
+}
+
+async function gSaveEmail(){
+  const l = G.editing; if (!l) return;
+  const v = $('eg-email').value.trim();
+  if (!v && !confirm('Clear their address? They will be marked as not to be emailed.')) return;
+  try {
+    const d = await api('/api/email/set', { method:'POST', body:JSON.stringify({ id:l.id, email:v }) });
+    gflash(d.email ? `Address saved for ${l.name || 'them'}.` : 'They will not be emailed.', 'ok');
+    await loadEngage(true);
+    const again = G.leads.find(x => x.id === l.id);
+    if (again) { G.editing = again; gOpen(again.id); }
+  } catch (e) { gflash(e.message, 'err'); }
+}
+
+async function gApproveOne(){
+  const l = G.editing; if (!l) return;
+  const fit = $('eg-fit').value;
+  // Copy the reviewer edited has to be saved before it is handed over, not after.
+  if (($('eg-note').value !== (l.connect_note || '')) || ($('eg-msg').value !== (l.first_message || ''))) {
+    try {
+      await api('/api/draft', { method:'POST', body:JSON.stringify({
+        id: l.id, connect_note: $('eg-note').value, first_message: $('eg-msg').value }) });
+    } catch (e) { gflash(e.message, 'err'); return; }
+  }
+  $('eg-dlg').close();
+  await gDecide([l.id], 'approve', fit !== l.fit ? fit : undefined);
+}
+
+// ---- wiring dialog
+
+async function gOpenWire(){
+  $('w-msg').textContent = 'Loading both platforms…';
+  $('w-save').disabled = true;
+  $('wire-dlg').showModal();
+  try {
+    const d = await api('/api/wiring');
+    G.wiring = d;
+    const opt = (rows, blank) => [`<option value="">${blank}</option>`].concat(
+      (rows || []).map(r => `<option value="${esc(r.id)}">${esc(r.name)}${
+        r.status ? ' · ' + esc(r.status) : ''}</option>`)).join('');
+
+    $('w-fit').innerHTML = (d.sendable_fits || SENDABLE)
+      .map(f => `<option value="${f}">${esc(FIT_LABEL[f] || f)}</option>`).join('');
+    $('w-sender').innerHTML = opt(d.linkedin_senders, 'Choose the sending profile…');
+    $('w-member').innerHTML = opt(d.members, 'Choose whose seat…');
+    $('w-invite').innerHTML = opt(d.linkedin_campaigns, 'Do not send connection requests');
+    $('w-dm').innerHTML = opt(d.linkedin_campaigns, 'Do not send direct messages');
+    $('w-email').innerHTML = opt(d.email_campaigns, 'Do not email this group');
+
+    $('w-li-note').textContent = d.linkedin_error ? scrub(d.linkedin_error)
+      : `${(d.linkedin_campaigns || []).length} campaigns`;
+    $('w-em-note').textContent = d.email_error ? scrub(d.email_error)
+      : `${(d.email_campaigns || []).length} campaigns`;
+    $('w-msg').textContent = 'Pick one group at a time. Each group can go to different campaigns.';
+    $('w-save').disabled = false;
+    gFillWire();
+  } catch (e) { $('w-msg').textContent = scrub(e.message); }
+}
+
+// Show what this group is already wired to, so saving never silently drops the other half.
+function gFillWire(){
+  const d = G.wiring; if (!d) return;
+  const fit = $('w-fit').value;
+  const cur = (d.current || {})[fit] || {};
+  const inv = cur.connect || (cur.campaign_id ? cur : null) || {};
+  const dm = cur.dm || {};
+  $('w-invite').value = inv.campaign_id || '';
+  $('w-dm').value = dm.campaign_id || '';
+  $('w-sender').value = inv.sender_id || dm.sender_id || $('w-sender').value || '';
+  $('w-member').value = inv.organisation_member_id || dm.organisation_member_id || $('w-member').value || '';
+  $('w-email').value = (d.current_email || {})[fit] || '';
+}
+
+async function gSaveWire(){
+  const fit = $('w-fit').value;
+  const sender = $('w-sender').value, member = $('w-member').value;
+  const invite = $('w-invite').value, dm = $('w-dm').value, email = $('w-email').value;
+  if ((invite || dm) && (!sender || !member)) {
+    $('w-msg').textContent = 'A LinkedIn campaign also needs a sending profile and a seat.';
+    return;
+  }
+  $('w-save').disabled = true;
+  try {
+    await api('/api/wiring', { method:'POST', body:JSON.stringify({
+      fit,
+      invite: invite ? { campaign_id:invite, sender_id:sender, organisation_member_id:member } : null,
+      dm: dm ? { campaign_id:dm, sender_id:sender, organisation_member_id:member } : null,
+      email_campaign_id: email === '' ? null : Number(email),
+    })});
+    $('wire-dlg').close();
+    gflash(`${FIT_LABEL[fit]} saved.`, 'ok');
+    await loadEngage(true);
+  } catch (e) { $('w-msg').textContent = scrub(e.message); }
+  finally { $('w-save').disabled = false; }
+}
+
+// ---- events
+
+$('g-run').addEventListener('click', gRunNow);
+$('g-check').addEventListener('click', gCheckPosts);
+$('g-wire').addEventListener('click', gOpenWire);
+$('w-fit').addEventListener('change', gFillWire);
+$('w-save').addEventListener('click', gSaveWire);
+$('w-cancel').addEventListener('click', () => $('wire-dlg').close());
+$('w-x').addEventListener('click', () => $('wire-dlg').close());
+
+$('g-switches').addEventListener('click', e => {
+  const b = e.target.closest('[data-gsw]'); if (!b) return;
+  gToggle(b.dataset.gsw, b.dataset.on === '1');
+});
+$('g-setup').addEventListener('click', e => {
+  if (e.target.closest('#g-hook-save')) gSaveHook();
+});
+$('g-filters').addEventListener('click', e => {
+  const b = e.target.closest('[data-gfil]'); if (!b) return;
+  G.filter = b.dataset.gfil; G.sel.clear(); gRenderList();
+});
+$('g-list').addEventListener('change', e => {
+  const c = e.target.closest('[data-gsel]'); if (!c) return;
+  if (c.checked) G.sel.add(c.dataset.gsel); else G.sel.delete(c.dataset.gsel);
+  gRenderBulk();
+});
+$('g-list').addEventListener('click', e => {
+  const ok = e.target.closest('[data-gok]');
+  if (ok) return void gDecide([ok.dataset.gok], 'approve');
+  const open = e.target.closest('[data-gopen]');
+  if (open) gOpen(open.dataset.gopen);
+});
+$('g-bulk').addEventListener('click', e => {
+  if (e.target.closest('[data-gclear]')) { G.sel.clear(); return void gRenderList(); }
+  const b = e.target.closest('[data-gbulk]');
+  if (b) gDecide([...G.sel], 'approve');
+});
+$('eg-note').addEventListener('input', gNoteCount);
+$('eg-save').addEventListener('click', gSaveCopy);
+$('eg-email-save').addEventListener('click', gSaveEmail);
+$('eg-approve').addEventListener('click', gApproveOne);
+$('eg-skip').addEventListener('click', () => {
+  const l = G.editing; if (!l) return;
+  $('eg-dlg').close(); gDecide([l.id], 'reject');
+});
+$('eg-x').addEventListener('click', () => $('eg-dlg').close());
+
 // ---------------------------------------------------------------- boot
 
 (async function boot(){
@@ -1905,6 +2656,8 @@ $('send-toggle').addEventListener('click', toggleSending);
 
   document.querySelector('[data-view="linkedin"]').classList.toggle('hide', !okLinkedIn);
   document.querySelector('[data-view="email"]').classList.toggle('hide', !okEmail);
+  // Post engagement is the LinkedIn side of the house: same right, its own screen.
+  $('tab-engage').classList.toggle('hide', !okLinkedIn);
   $('tab-people').classList.toggle('hide', !E.viewer?.is_admin);
   $('tab-results').classList.toggle('hide', !(E.viewer?.can_analytics || E.viewer?.is_admin));
 
