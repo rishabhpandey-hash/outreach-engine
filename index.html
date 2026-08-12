@@ -2336,24 +2336,48 @@ function gRenderList(){
   gRenderBulk();
 }
 
+// A post is one thing to a reader, but two lists upstream and therefore two batch rows. Group
+// them back into the post they belong to, keyed on the id inside the link.
 function gRenderBatches(){
   if (!G.batches.length) {
     $('g-batches').innerHTML = `<div class="empty">No posts read yet.</div>`;
     return;
   }
-  $('g-batches').innerHTML = G.batches.map(b => {
-    const mine = G.leads.filter(l => l.batch_id === b.id).length;
+  const idOf = u => (String(u || '').match(/\d{15,25}/) || [''])[0];
+  const posts = new Map();
+  for (const b of G.batches) {
+    const key = idOf(b.post_url) || b.id;
+    const p = posts.get(key) || { key, label: b.label, url: b.post_url, people: 0,
+      when: b.last_pulled_at || b.created_at, by: b.created_by, parts: 0 };
+    p.parts++;
+    p.people += G.leads.filter(l => l.batch_id === b.id).length;
+    const when = b.last_pulled_at || b.created_at;
+    if (when > p.when) p.when = when;
+    // "Post1 Likes" and "Post1 Comments" — show the shared part, not one arbitrary half.
+    p.label = (p.label || '').replace(/\s*[—-]?\s*(likes?|comments?|reactions?)\s*$/i, '') || p.label;
+    posts.set(key, p);
+  }
+
+  const watched = new Map((G.watchedPosts || []).map(w => [w.activity_id, w]));
+  $('g-batches').innerHTML = [...posts.values()].map(p => {
+    const w = watched.get(p.key);
+    const days = w ? Math.ceil((new Date(w.watch_until) - Date.now()) / 86400000) : null;
+    const chip = !w
+      ? '<span class="mini m-inv">read once, not being watched</span>'
+      : days > 0
+        ? `<span class="mini m-copy">re-read daily · ${days} ${days === 1 ? 'day' : 'days'} left</span>`
+        : '<span class="mini m-inv">finished watching</span>';
     return `<div class="person">
       <div class="p-main">
-        <div class="p-name">${esc(b.label || 'A post')}</div>
-        <div class="p-role">${b.kn_engager_count != null
-          ? `${Number(b.kn_engager_count).toLocaleString()} engaged with it` : 'engagement unknown'}
-          ${mine ? ` · ${mine} of them are in the list above` : ''}</div>
-        <div class="p-why">${esc(b.created_by || '')} ·
-          ${new Date(b.last_pulled_at || b.created_at).toLocaleString()}</div>
+        <div class="p-name">${esc(p.label || 'A post')} ${chip}</div>
+        <div class="p-role">${p.people.toLocaleString()} ${p.people === 1 ? 'person' : 'people'} from it in the list above
+          ${p.parts > 1 ? ' · reactions and comments' : ' · one list only'}</div>
+        <div class="p-why">Last read ${new Date(p.when).toLocaleString()}${
+          w?.rescrape_count ? ` · re-read ${w.rescrape_count} ${w.rescrape_count === 1 ? 'time' : 'times'}` : ''}${
+          w?.last_result ? ` · ${esc(String(w.last_result).slice(0, 80))}` : ''}</div>
       </div>
-      <div class="p-act">${b.post_url
-        ? `<a href="${esc(b.post_url)}" target="_blank" rel="noopener noreferrer">Open the post</a>` : ''}</div>
+      <div class="p-act">${p.url
+        ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Open the post</a>` : ''}</div>
     </div>`;
   }).join('');
 }
@@ -2413,6 +2437,7 @@ async function loadEngage(force){
     const d = await api('/api/list?limit=400');
     G.leads = d.leads || []; G.counts = d.counts || {};
     G.batches = d.batches || []; G.viewer = d.viewer || {};
+    G.watchedPosts = d.watched_posts || [];
     G.state = {
       automatic: !!d.automatic, linkedin_enabled: !!d.linkedin_enabled,
       email_enabled: !!d.email_enabled, email_master_enabled: !!d.email_master_enabled,
