@@ -372,7 +372,10 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
 
   <div class="card">
     <div class="card-h bordered"><div class="card-t">The posts they came from</div>
-      <div class="card-s">Scrape a post in the outreach tool and it turns up here on its own.</div></div>
+      <div class="card-s"><b>Publishing a post does not put it here.</b> This screen never reads
+        LinkedIn itself — it reads posts that have been <b>scraped in the outreach tool</b>.
+        Scrape a post's likes and its comments there, and it turns up here on its own within the
+        hour, or straight away if you press “Look for new posts”.</div></div>
     <div class="card-b flush" id="g-batches"></div>
   </div>
 </div>
@@ -2429,15 +2432,30 @@ async function gRunNow(){
   finally { hideLoader(); }
 }
 
+// A zero here has several very different causes, and "found nobody new" reads like a fault
+// when the real answer is usually "that post has not been scraped yet". Always say which.
 async function gCheckPosts(){
   showLoader('Looking for new posts', ['Reading your posts…',
     'Bringing in whoever engaged…', 'Filing them…']);
   try {
     const d = await api('/api/discover', { method:'POST', body:'{}' });
-    gflash(d.brought_in
-      ? `${d.brought_in} new ${d.brought_in === 1 ? 'person' : 'people'} from ${d.posts_pulled} `
-        + `${d.posts_pulled === 1 ? 'post' : 'posts'}.`
-      : `Read ${d.post_lists_seen} ${d.post_lists_seen === 1 ? 'post' : 'posts'} and found nobody new.`, 'ok');
+    const why = [
+      d.already_have ? `${d.already_have} already brought in` : null,
+      d.skipped_other_sender ? `${d.skipped_other_sender} belong to another sending profile` : null,
+      d.skipped_empty ? `${d.skipped_empty} scraped but still empty` : null,
+    ].filter(Boolean).join(' · ');
+
+    if (d.brought_in) {
+      gflash(`${d.brought_in} new ${d.brought_in === 1 ? 'person' : 'people'} from `
+        + `${d.posts_pulled} ${d.posts_pulled === 1 ? 'post' : 'posts'}.`
+        + (why ? ` Of the rest: ${why}.` : ''), 'ok');
+    } else {
+      gflash(`Nobody new. I can see ${d.post_lists_seen} scraped `
+        + `${d.post_lists_seen === 1 ? 'post' : 'posts'}`
+        + (why ? ` — ${why}` : '')
+        + '. If you have just published a post, it will not appear until it has been scraped '
+        + 'in the outreach tool — publishing alone does not create anything here.', 'ok');
+    }
     await loadEngage(true);
   } catch (e) { gflash(e.message, 'err'); }
   finally { hideLoader(); }
