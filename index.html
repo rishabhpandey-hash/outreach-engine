@@ -372,10 +372,10 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
 
   <div class="card">
     <div class="card-h bordered"><div class="card-t">The posts they came from</div>
-      <div class="card-s"><b>Publishing a post does not put it here.</b> This screen never reads
-        LinkedIn itself — it reads posts that have been <b>scraped in the outreach tool</b>.
-        Scrape a post's likes and its comments there, and it turns up here on its own within the
-        hour, or straight away if you press “Look for new posts”.</div></div>
+      <div class="card-s">Paste a post link and this starts both scrapes for you — its
+        reactions and its comments — without going anywhere else. Whoever engaged is pulled in
+        automatically once the scrape finishes, usually a few minutes.</div></div>
+    <div class="card-b" id="g-scrape"></div>
     <div class="card-b flush" id="g-batches"></div>
   </div>
 </div>
@@ -2358,8 +2358,53 @@ function gRenderBatches(){
   }).join('');
 }
 
+// Paste a link, both scrapes start. The sending profile matters: a post scraped under
+// somebody else's profile produces lists this client is not allowed to read.
+function gRenderScrape(){
+  const may = G.viewer?.can_li_import || G.viewer?.is_admin;
+  if (!may) { $('g-scrape').innerHTML = ''; return; }
+  const senders = G.senders || [];
+  $('g-scrape').innerHTML = `
+    <label class="f">Post link</label>
+    <div class="row">
+      <input id="g-post" placeholder="https://www.linkedin.com/posts/kinner_…"
+        style="flex:1;min-width:260px" autocomplete="off">
+      <select id="g-post-who" style="width:auto;min-width:150px">
+        ${senders.length
+          ? senders.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')
+          : '<option value="">no sending profiles</option>'}
+      </select>
+      <button class="btn-primary" id="g-post-go" ${senders.length ? '' : 'disabled'}>Scrape this post</button>
+    </div>
+    <div class="hint" id="g-post-state">Whose post is it? Pick the profile it was published
+      from — that is what decides this post belongs to you.</div>`;
+}
+
+async function gScrapePost(){
+  const url = $('g-post').value.trim();
+  const who = $('g-post-who').value;
+  const state = $('g-post-state'), btn = $('g-post-go');
+  if (!url) { state.innerHTML = '<b style="color:var(--red)">Paste the post link first.</b>'; return; }
+  btn.disabled = true;
+  showLoader('Starting the scrape', ['Asking for the reactions…',
+    'Asking for the comments…', 'Handing it over…']);
+  try {
+    const d = await api('/api/scrape', { method:'POST',
+      body: JSON.stringify({ post_url:url, sender_id:who }) });
+    $('g-post').value = '';
+    gflash(`Both scrapes started for this post.`
+      + (d.already_pulled ? ` Note: a post with the same id was already brought in as
+         “${d.already_pulled.label}”, so anyone who engaged before will not be added twice.` : '')
+      + ` It runs in the outreach tool and takes a few minutes — the hourly check brings the
+         people in on its own, or press “Look for new posts” once it has finished.`, 'ok');
+    state.innerHTML = '<b style="color:var(--green)">Started.</b> Give it a few minutes.';
+  } catch (e) {
+    state.innerHTML = `<b style="color:var(--red)">${esc(scrub(e.message))}</b>`;
+  } finally { btn.disabled = false; hideLoader(); }
+}
+
 function gRenderAll(){
-  gTiles(); gSwitches(); gLastRun(); gSetup(); gRenderList(); gRenderBatches();
+  gTiles(); gSwitches(); gLastRun(); gSetup(); gRenderScrape(); gRenderList(); gRenderBatches();
 }
 
 async function loadEngage(force){
@@ -2386,6 +2431,13 @@ async function loadEngage(force){
     gRenderAll();
     G.loaded = true;
   } catch (e) { gflash(e.message, 'err'); }
+
+  // Only this client's own profiles, so the post-scrape picker cannot offer somebody else's.
+  try {
+    const sd = await api('/api/senders');
+    G.senders = (sd.senders || []).map(s => ({ id: s.encrypted_id, name: s.name }));
+    gRenderScrape();
+  } catch (_) { G.senders = []; }
 }
 
 async function gToggle(key, wasOn){
@@ -2676,6 +2728,12 @@ async function gSaveWire(){
 
 $('g-run').addEventListener('click', gRunNow);
 $('g-check').addEventListener('click', gCheckPosts);
+$('g-scrape').addEventListener('click', e => {
+  if (e.target.closest('#g-post-go')) gScrapePost();
+});
+$('g-scrape').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'g-post') { e.preventDefault(); gScrapePost(); }
+});
 $('g-wire').addEventListener('click', gOpenWire);
 $('w-fit').addEventListener('change', gFillWire);
 $('w-save').addEventListener('click', gSaveWire);
