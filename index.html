@@ -364,10 +364,14 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
     <div class="card-h bordered">
       <div class="card-t">Everyone who engaged</div>
       <div class="grow"></div>
-      <div class="tabs" id="g-filters"></div>
+      <button id="g-toggle-list">Show the list</button>
     </div>
-    <div class="bulk hide" id="g-bulk"></div>
-    <div class="card-b flush" id="g-list"></div>
+    <div class="card-b" id="g-summary"></div>
+    <div id="g-listwrap" class="hide">
+      <div class="card-b" style="padding-top:0"><div class="tabs" id="g-filters"></div></div>
+      <div class="bulk hide" id="g-bulk"></div>
+      <div class="card-b flush" id="g-list"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -2313,9 +2317,42 @@ function gRenderFilters(){
   }).join('');
 }
 
+// Collapsed by default. Once nothing needs approving by hand, this list is an audit trail, and
+// an audit trail should not be the tallest thing on the screen.
+function gSummary(){
+  const c = G.counts || {};
+  const look = c.needs_a_look || 0;
+  const waiting = (c.by_status || {}).classified || 0;
+  const open = !$('g-listwrap').classList.contains('hide');
+
+  $('g-toggle-list').textContent = open ? 'Hide the list' : (look ? `Show the ${look} to decide` : 'Show the list');
+  $('g-summary').innerHTML = look
+    ? `<div class="row"><span class="mini m-nocopy">${look} need a decision</span>
+        <span class="hint" style="margin:0">Filed as unclear, so they never go out on their own.
+        Everyone else is handled automatically — nothing here needs you.</span></div>`
+    : `<div class="hint" style="margin:0">${G.leads.length.toLocaleString()} people, all handled
+        automatically. Nothing is waiting on a decision${waiting
+          ? ` — ${waiting.toLocaleString()} are queued for the next run` : ''}. Open the list to
+        check who went out and what was sent.</div>`;
+}
+
 function gRenderBulk(){
   const n = G.sel.size;
-  $('g-bulk').classList.toggle('hide', !n);
+  const look = G.filter === 'look';
+  const inView = gFilterList().filter(l => l.status === 'classified').length;
+  const may = G.viewer?.can_li_decide || G.viewer?.is_admin;
+  // Most of the unclear pile is noise — bloggers, students, job hunters. Clearing it in one
+  // action is the difference between a usable to-do list and one nobody ever finishes.
+  const sweep = look && may && inView && !n;
+  $('g-bulk').classList.toggle('hide', !n && !sweep);
+  if (sweep) {
+    $('g-bulk').innerHTML = `<b>${inView} to decide.</b>
+      <span class="hint" style="margin:0">Tick the few worth having and approve them, or clear the
+      whole pile — skipping only means nobody is contacted.</span>
+      <div class="grow"></div>
+      <button class="btn-no" data-gskipall="1">Skip all ${inView}</button>`;
+    return;
+  }
   if (!n) return;
   $('g-bulk').innerHTML = `<b>${n} selected.</b>
     <span class="hint" style="margin:0">Approving hands each one to the campaigns wired for their
@@ -2428,7 +2465,8 @@ async function gScrapePost(){
 }
 
 function gRenderAll(){
-  gTiles(); gSwitches(); gLastRun(); gSetup(); gRenderScrape(); gRenderList(); gRenderBatches();
+  gTiles(); gSwitches(); gLastRun(); gSetup(); gRenderScrape();
+  gRenderList(); gSummary(); gRenderBatches();
 }
 
 async function loadEngage(force){
@@ -2806,8 +2844,23 @@ $('g-list').addEventListener('click', e => {
 });
 $('g-bulk').addEventListener('click', e => {
   if (e.target.closest('[data-gclear]')) { G.sel.clear(); return void gRenderList(); }
+  if (e.target.closest('[data-gskipall]')) {
+    const ids = gFilterList().filter(l => l.status === 'classified').map(l => l.id);
+    if (!ids.length) return;
+    if (!confirm(`Skip all ${ids.length}?\n\nThey stay in the list but are never contacted on `
+      + `either channel. You can still approve any of them later.`)) return;
+    return void gDecide(ids, 'reject');
+  }
   const b = e.target.closest('[data-gbulk]');
   if (b) gDecide([...G.sel], 'approve');
+});
+
+$('g-toggle-list').addEventListener('click', () => {
+  const w = $('g-listwrap');
+  w.classList.toggle('hide');
+  // Land on the pile that actually needs a person, not on whatever was last looked at.
+  if (!w.classList.contains('hide') && G.counts?.needs_a_look) { G.filter = 'look'; gRenderList(); }
+  gSummary();
 });
 $('eg-note').addEventListener('input', gNoteCount);
 $('eg-save').addEventListener('click', gSaveCopy);
