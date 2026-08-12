@@ -462,7 +462,8 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
   </div>
   <div class="card">
     <div class="card-h bordered"><div class="card-t">Campaign by campaign</div>
-      <div class="card-s">Open any campaign for its full report.</div></div>
+      <div class="card-s">Open any campaign for its full report.
+        <span id="r-list-note"></span></div></div>
     <div class="card-b flush" id="r-list"></div>
   </div>
 </div>
@@ -1658,7 +1659,19 @@ async function loadResults(force){
 
     $('r-note').innerHTML = d.open_tracking_note ? `<b>On opens:</b> ${esc(d.open_tracking_note)}` : '';
 
-    const rows = (d.campaigns || []).filter(c => c.people_contacted > 0);
+    // Ordered by what you are working on, not by which is biggest. Sorting on volume buried a
+    // campaign started last week beneath five finished ones from June — it was on screen the
+    // whole time, ten rows down, which is indistinguishable from missing.
+    const all = (d.campaigns || []);
+    const rows = all.filter(c => c.people_contacted > 0)
+      .sort((a, b) => (b.status === 'ACTIVE') - (a.status === 'ACTIVE')
+                   || b.people_contacted - a.people_contacted);
+    const hidden = all.length - rows.length;
+    // If a campaign you expect is genuinely absent, say the count rather than leave you counting.
+    $('r-list-note').innerHTML = all.length
+      ? `${rows.length} campaign${rows.length === 1 ? '' : 's'} with people in them, `
+        + `still-running ones first${hidden ? ` · ${hidden} not started yet, so not listed` : ''}.`
+      : '';
     $('r-list').innerHTML = rows.length ? rows.map(c => {
       const cls = c.health.level === 'bad' ? 'm-nocopy' : c.health.level === 'watch' ? 'm-nocopy' : 'm-copy';
       const style = c.health.level === 'bad'
@@ -1666,6 +1679,7 @@ async function loadResults(force){
       return `<div class="person" style="cursor:pointer" data-report="${c.campaign_id}">
         <div class="p-main">
           <div class="p-name">${esc(c.name)}
+            ${c.status === 'ACTIVE' ? '<span class="mini m-copy">running</span>' : ''}
             <span class="mini ${cls}" style="${style}">${esc(c.health.level === 'good' ? 'healthy'
               : c.health.level === 'watch' ? 'worth watching' : c.health.level === 'bad' ? 'needs attention' : 'early days')}</span>
             ${c.paused_reason ? `<span class="mini m-nocopy">stopped: ${esc(c.paused_reason)}</span>` : ''}</div>
