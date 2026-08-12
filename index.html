@@ -551,39 +551,37 @@ dialog::backdrop{background:rgba(17,24,39,.42)}
 </dialog>
 
 <dialog id="wire-dlg">
-  <div class="d-h"><strong>Where each group is sent</strong><button id="w-x">Close</button></div>
+  <div class="d-h"><strong>Where engagers are sent</strong><button id="w-x">Close</button></div>
   <div class="d-b">
     <p class="hint" id="w-msg" style="margin:0 0 14px"></p>
-    <label class="f">Group</label>
-    <select id="w-fit"></select>
 
-    <div class="grp" style="margin:18px -18px 0"><div class="grp-t">LinkedIn</div>
+    <div class="grp" style="margin:0 -18px"><div class="grp-t">LinkedIn</div>
       <div class="grow"></div><span class="grp-c" id="w-li-note"></span></div>
 
-    <label class="f" style="margin-top:16px">Sending profile — whose LinkedIn account this goes out from</label>
+    <label class="f" style="margin-top:16px">Campaign</label>
+    <select id="w-invite"></select>
+    <div class="hint">One campaign covers everybody. It works out on its own whether somebody is
+      already a connection — a request goes to those who are not, a message straight to those who
+      are. Its templates must be <span class="mono">{{custom_field_1}}</span> for the request note
+      and <span class="mono">{{custom_field_2}}</span> for the message, or every person gets
+      identical copy. It also has to be <b>active</b>, or nothing sends.</div>
+
+    <label class="f" style="margin-top:14px">Sending profile — whose LinkedIn account this goes out from</label>
     <select id="w-sender"></select>
     <label class="f" style="margin-top:14px">Whose seat in the outreach tool</label>
     <select id="w-member"></select>
 
-    <label class="f" style="margin-top:14px">Campaign for connection requests
-      <span style="color:var(--ink2);font-weight:400">— people who are not connected yet</span></label>
-    <select id="w-invite"></select>
-    <label class="f" style="margin-top:14px">Campaign for direct messages
-      <span style="color:var(--ink2);font-weight:400">— people already connected</span></label>
-    <select id="w-dm"></select>
-    <div class="hint">Leave either one empty and that half simply does not run. Both may be the
-      same campaign if it is built to handle both.</div>
-
-    <div class="grp" style="margin:18px -18px 0"><div class="grp-t">Email</div>
+    <div class="grp" style="margin:20px -18px 0"><div class="grp-t">Email</div>
       <div class="grow"></div><span class="grp-c" id="w-em-note"></span></div>
-    <label class="f" style="margin-top:16px">Campaign to add them to</label>
+    <label class="f" style="margin-top:16px">Campaign</label>
     <select id="w-email"></select>
     <div class="hint">The copy in that campaign is whatever your team already wrote and approved
       under Messaging. This only adds the person, along with a merge field saying what they did
-      on the post — <span class="mono">{{engage_line}}</span>.</div>
+      on the post — <span class="mono">{{engage_line}}</span>. Only people we found an address
+      for are added.</div>
   </div>
   <div class="d-f"><button id="w-cancel">Cancel</button>
-    <button class="btn-primary" id="w-save">Save this group</button></div>
+    <button class="btn-primary" id="w-save">Save</button></div>
 </dialog>
 
 <dialog id="pair-dlg">
@@ -2162,10 +2160,8 @@ function gLastRun(){
   const missing = [];
   if (!s.enrichment_configured && s.email_enabled) missing.push('no address lookup is set up');
   const w = s.wiring || {};
-  const by = (G.counts || {}).by_fit || {};
-  const unwired = liveGroups().filter(f => by[f] && !w[f]?.invite && !w[f]?.dm);
-  if (unwired.length) missing.push(
-    `${unwired.map(f => FIT_LABEL[f].toLowerCase()).join(' and ')} ${unwired.length === 1 ? 'has' : 'have'} no LinkedIn campaign`);
+  const li = !!(w.linkedin ?? SENDABLE.some(f => w[f]?.invite || w[f]?.dm));
+  if (!li) missing.push('no LinkedIn campaign is chosen');
 
   $('g-lastrun').innerHTML = `<div class="hint" style="margin:0">${esc(bits.join(' · '))}</div>`
     + (missing.length ? `<div class="callout" style="margin-top:12px">
@@ -2177,17 +2173,20 @@ function gSetup(){
   const s = G.state, w = s.wiring || {}, admin = !!G.viewer?.is_admin;
   const dot = (on, label) => `<span class="mini ${on ? 'm-copy' : 'm-inv'}">${on ? '' : 'no '}${esc(label)}</span>`;
 
+  const li = !!(w.linkedin ?? SENDABLE.some(f => w[f]?.invite || w[f]?.dm));
+  const em = !!(w.email ?? SENDABLE.some(f => w[f]?.email));
   $('g-setup').innerHTML = `
     <div class="dl" style="margin:0 -18px">
-      ${liveGroups().map(f => `<div>
-        <div class="dt">${esc(FIT_LABEL[f])}</div>
-        <div class="chips" style="margin-top:6px">
-          ${dot(!!w[f]?.invite, 'connection requests')}
-          ${dot(!!w[f]?.dm, 'direct messages')}
-          ${dot(!!w[f]?.email, 'email campaign')}
-        </div></div>`).join('')}
+      <div><div class="dt">LinkedIn</div>
+        <div class="chips" style="margin-top:6px">${dot(li, 'campaign chosen')}</div>
+        <div class="dn">A request if they are not connected, a message if they are.</div></div>
+      <div><div class="dt">Email</div>
+        <div class="chips" style="margin-top:6px">${dot(em, 'campaign chosen')}</div>
+        <div class="dn">Only the people we found an address for.</div></div>
     </div>
-    <div class="hint">A group with nothing ticked collects people but sends nowhere.</div>
+    <div class="hint">${li || em
+      ? 'Everyone who engages goes to these. Which copy they get still depends on whether they look like a partner or a customer.'
+      : 'Nothing is chosen yet, so people collect here but go nowhere.'}</div>
 
     ${admin ? emailFinderBlock() : ''}`;
 }
@@ -2743,56 +2742,65 @@ async function gOpenWire(){
       (rows || []).map(r => `<option value="${esc(r.id)}">${esc(r.name)}${
         r.status ? ' · ' + esc(r.status) : ''}</option>`)).join('');
 
-    $('w-fit').innerHTML = liveGroups()
-      .map(f => `<option value="${f}">${esc(FIT_LABEL[f] || f)}</option>`).join('');
     $('w-sender').innerHTML = opt(d.linkedin_senders, 'Choose the sending profile…');
     $('w-member').innerHTML = opt(d.members, 'Choose whose seat…');
-    $('w-invite').innerHTML = opt(d.linkedin_campaigns, 'Do not send connection requests');
-    $('w-dm').innerHTML = opt(d.linkedin_campaigns, 'Do not send direct messages');
-    $('w-email').innerHTML = opt(d.email_campaigns, 'Do not email this group');
+    $('w-invite').innerHTML = opt(d.linkedin_campaigns, 'Do not send on LinkedIn');
+    $('w-email').innerHTML = opt(d.email_campaigns, 'Do not send email');
 
     $('w-li-note').textContent = d.linkedin_error ? scrub(d.linkedin_error)
       : `${(d.linkedin_campaigns || []).length} campaigns`;
     $('w-em-note').textContent = d.email_error ? scrub(d.email_error)
       : `${(d.email_campaigns || []).length} campaigns`;
-    $('w-msg').textContent = 'Pick one group at a time. Each group can go to different campaigns.';
+    $('w-msg').textContent = 'Everyone who engages goes to these two campaigns.';
     $('w-save').disabled = false;
     gFillWire();
   } catch (e) { $('w-msg').textContent = scrub(e.message); }
 }
 
-// Show what this group is already wired to, so saving never silently drops the other half.
+// One destination, so read back whatever any group happens to point at — they are all the same.
 function gFillWire(){
   const d = G.wiring; if (!d) return;
-  const fit = $('w-fit').value;
-  const cur = (d.current || {})[fit] || {};
-  const inv = cur.connect || (cur.campaign_id ? cur : null) || {};
-  const dm = cur.dm || {};
-  $('w-invite').value = inv.campaign_id || '';
-  $('w-dm').value = dm.campaign_id || '';
-  $('w-sender').value = inv.sender_id || dm.sender_id || $('w-sender').value || '';
-  $('w-member').value = inv.organisation_member_id || dm.organisation_member_id || $('w-member').value || '';
-  $('w-email').value = (d.current_email || {})[fit] || '';
+  const cur = Object.values(d.current || {})
+    .map(c => c.connect || (c.campaign_id ? c : null) || c.dm).find(Boolean) || {};
+  $('w-invite').value = cur.campaign_id || '';
+  $('w-sender').value = cur.sender_id || '';
+  $('w-member').value = cur.organisation_member_id || '';
+  $('w-email').value = Object.values(d.current_email || {}).find(Boolean) || '';
 }
 
+// Saved once and applied to every group behind the scenes. Nobody has to think about groups to
+// answer the only question that matters: which campaign does an engager go into.
 async function gSaveWire(){
-  const fit = $('w-fit').value;
   const sender = $('w-sender').value, member = $('w-member').value;
-  const invite = $('w-invite').value, dm = $('w-dm').value, email = $('w-email').value;
-  if ((invite || dm) && (!sender || !member)) {
+  const li = $('w-invite').value, email = $('w-email').value;
+  if (li && (!sender || !member)) {
     $('w-msg').textContent = 'A LinkedIn campaign also needs a sending profile and a seat.';
     return;
   }
+  if (!li && !email) {
+    $('w-msg').textContent = 'Pick a LinkedIn campaign, an email campaign, or both.';
+    return;
+  }
   $('w-save').disabled = true;
+  $('w-msg').textContent = 'Saving…';
   try {
-    await api('/api/wiring', { method:'POST', body:JSON.stringify({
-      fit,
-      invite: invite ? { campaign_id:invite, sender_id:sender, organisation_member_id:member } : null,
-      dm: dm ? { campaign_id:dm, sender_id:sender, organisation_member_id:member } : null,
-      email_campaign_id: email === '' ? null : Number(email),
-    })});
+    // The one campaign is written against every group, so the engine needs no change and a
+    // person's group still decides their copy — just never where they are sent.
+    for (const fit of SENDABLE) {
+      await api('/api/wiring', { method:'POST', body:JSON.stringify({
+        fit,
+        // Konnector branches on connected-vs-not itself, so the same campaign serves both.
+        invite: li ? { campaign_id:li, sender_id:sender, organisation_member_id:member } : null,
+        dm:     li ? { campaign_id:li, sender_id:sender, organisation_member_id:member } : null,
+        email_campaign_id: email === '' ? null : Number(email),
+      })});
+    }
     $('wire-dlg').close();
-    gflash(`${FIT_LABEL[fit]} saved.`, 'ok');
+    const liName = (G.wiring?.linkedin_campaigns || []).find(c => String(c.id) === li)?.name;
+    const emName = (G.wiring?.email_campaigns || []).find(c => String(c.id) === String(email))?.name;
+    gflash(`Saved. Everyone who engages now goes to ${[
+      liName && `“${liName}” on LinkedIn`, emName && `“${emName}” by email`
+    ].filter(Boolean).join(' and ')}.`, 'ok');
     await loadEngage(true);
   } catch (e) { $('w-msg').textContent = scrub(e.message); }
   finally { $('w-save').disabled = false; }
@@ -2809,7 +2817,6 @@ $('g-scrape').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'g-post') { e.preventDefault(); gScrapePost(); }
 });
 $('g-wire').addEventListener('click', gOpenWire);
-$('w-fit').addEventListener('change', gFillWire);
 $('w-save').addEventListener('click', gSaveWire);
 $('w-cancel').addEventListener('click', () => $('wire-dlg').close());
 $('w-x').addEventListener('click', () => $('wire-dlg').close());
