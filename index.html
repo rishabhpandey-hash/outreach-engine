@@ -2053,6 +2053,16 @@ const G_FILTERS = [
   ['all',      'Everyone',       () => true],
 ];
 
+// A group is only worth showing if somebody is actually in it, or it has already been wired.
+// Membership matched nobody in 171 people, and an empty third group on screen reads as a job
+// left undone. The engine still handles the group if an association ever turns up — it
+// reappears here by itself, rather than that person being quietly stranded.
+function liveGroups(){
+  const by = (G.counts || {}).by_fit || {}, w = (G.state || {}).wiring || {};
+  const live = SENDABLE.filter(f => by[f] || w[f]?.invite || w[f]?.dm || w[f]?.email);
+  return live.length ? live : SENDABLE;
+}
+
 let G = { leads:[], counts:{}, batches:[], state:{}, viewer:null,
           filter:null, sel:new Set(), editing:null, wiring:null, loaded:false };
 
@@ -2152,7 +2162,8 @@ function gLastRun(){
   const missing = [];
   if (!s.enrichment_configured && s.email_enabled) missing.push('no address lookup is set up');
   const w = s.wiring || {};
-  const unwired = SENDABLE.filter(f => !w[f]?.invite && !w[f]?.dm);
+  const by = (G.counts || {}).by_fit || {};
+  const unwired = liveGroups().filter(f => by[f] && !w[f]?.invite && !w[f]?.dm);
   if (unwired.length) missing.push(
     `${unwired.map(f => FIT_LABEL[f].toLowerCase()).join(' and ')} ${unwired.length === 1 ? 'has' : 'have'} no LinkedIn campaign`);
 
@@ -2168,7 +2179,7 @@ function gSetup(){
 
   $('g-setup').innerHTML = `
     <div class="dl" style="margin:0 -18px">
-      ${SENDABLE.map(f => `<div>
+      ${liveGroups().map(f => `<div>
         <div class="dt">${esc(FIT_LABEL[f])}</div>
         <div class="chips" style="margin-top:6px">
           ${dot(!!w[f]?.invite, 'connection requests')}
@@ -2732,7 +2743,7 @@ async function gOpenWire(){
       (rows || []).map(r => `<option value="${esc(r.id)}">${esc(r.name)}${
         r.status ? ' · ' + esc(r.status) : ''}</option>`)).join('');
 
-    $('w-fit').innerHTML = (d.sendable_fits || SENDABLE)
+    $('w-fit').innerHTML = liveGroups()
       .map(f => `<option value="${f}">${esc(FIT_LABEL[f] || f)}</option>`).join('');
     $('w-sender').innerHTML = opt(d.linkedin_senders, 'Choose the sending profile…');
     $('w-member').innerHTML = opt(d.members, 'Choose whose seat…');
