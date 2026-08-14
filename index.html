@@ -2922,28 +2922,39 @@ $('eg-x').addEventListener('click', () => $('eg-dlg').close());
   }
   if (!data?.session) { show('login'); return; }
 
-  // Someone may have cold-email access without LinkedIn access, or the reverse.
-  // Ask both, and only refuse if neither will have them.
-  try { await loadEmail(true); } catch (_) { /* no engine access at all */ }
-  const okEmail = !!(E.viewer?.can_email || E.viewer?.is_admin);
-  const okLinkedIn = !!(E.viewer?.can_linkedin || E.viewer?.is_admin);
-  if (okLinkedIn) { try { await loadPairs(); } catch (_) { /* shown empty */ } }
+  // Rights come from /api/whoami, which needs no right to call. They used to be
+  // read off /api/templates — but that route requires can_email, so anyone granted
+  // only Results was 403'd and then told they had no access at all.
+  let who = null;
+  try { who = await eapi('/api/whoami'); } catch (e) { who = null; }
+  const V = who?.viewer || null;
 
-  if (!okLinkedIn && !okEmail) {
+  // Refuse only when there is genuinely nothing to show this person.
+  if (!V || who?.nothing_granted) {
     $('denied-email').textContent = (await sb.auth.getSession()).data?.session?.user?.email ?? '';
     show('denied'); return;
   }
+  E.viewer = V;   // the rest of the app reads rights from here
+
+  const okEmail = !!(V.can_email || V.is_admin);
+  const okLinkedIn = !!(V.can_linkedin || V.is_admin);
+  const okResults = !!(V.can_analytics || V.is_admin);
 
   document.querySelector('[data-view="linkedin"]').classList.toggle('hide', !okLinkedIn);
   document.querySelector('[data-view="email"]').classList.toggle('hide', !okEmail);
   // Post engagement is the LinkedIn side of the house: same right, its own screen.
   $('tab-engage').classList.toggle('hide', !okLinkedIn);
-  $('tab-people').classList.toggle('hide', !E.viewer?.is_admin);
-  $('tab-results').classList.toggle('hide', !(E.viewer?.can_analytics || E.viewer?.is_admin));
+  $('tab-people').classList.toggle('hide', !V.is_admin);
+  $('tab-results').classList.toggle('hide', !okResults);
 
   show('app');
   applyLiRights();
-  switchView(okLinkedIn ? 'linkedin' : 'email');
+  // Open the first tab they can actually use, not a fixed one.
+  switchView(okLinkedIn ? 'linkedin' : okEmail ? 'email' : okResults ? 'results' : 'people');
+
+  // Only fetch what they are allowed to see, so nothing 403s in the background.
+  if (okEmail) { try { await loadEmail(true); } catch (_) { /* surfaced in the tab */ } }
+  if (okLinkedIn) { try { await loadPairs(); } catch (_) { /* shown empty */ } }
 })();
 </script>
 </body>
