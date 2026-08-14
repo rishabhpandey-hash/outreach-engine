@@ -1548,8 +1548,11 @@ async function inviteUser(){
       body:JSON.stringify({ email:P.editing.email }) });
     if (!d.link) throw new Error('No link came back.');
     try { await navigator.clipboard.writeText(d.link); } catch (_) {}
-    $('u-warn').innerHTML = `<b>Sign-in link copied.</b> Send it to ${esc(P.editing.email)} directly —
-      WhatsApp, Slack, anywhere. It works once and then expires.
+    $('u-warn').innerHTML = `<b>Sign-in link copied.</b> Send it to ${esc(P.editing.email)} —
+      WhatsApp, Slack, anywhere. They click it and they are in: no email, no password,
+      nothing to type. It works once and expires in 24 hours.
+      ${d.preview_safe ? '' : '<div style="margin-top:6px;color:var(--amber)">This one goes through the '
+        + 'platform link, which a chat preview can use up before they click. Send it as plain text.</div>'}
       <div class="mono" style="margin-top:6px;word-break:break-all">${esc(d.link)}</div>`;
   } catch (e) { pflash(e.message, 'err'); }
   finally { $('u-invite').disabled = false; }
@@ -2907,6 +2910,24 @@ $('eg-x').addEventListener('click', () => $('eg-dlg').close());
 // ---------------------------------------------------------------- boot
 
 (async function boot(){
+  // A sign-in link handed out from People arrives as ?t=<token>. We exchange it here
+  // rather than sending people through the platform's /verify URL, because that URL
+  // is spent by the first fetch of it — and chat apps fetch links to build previews,
+  // so the recipient would arrive at a dead link and be asked to sign in again.
+  const q = new URLSearchParams(location.search);
+  const handoff = q.get('t');
+  if (handoff) {
+    const { error } = await sb.auth.verifyOtp({ token_hash: handoff, type: 'magiclink' });
+    q.delete('t');
+    history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
+    if (error) {
+      show('login');
+      $('login-msg').innerHTML = '<div class="flash err">That sign-in link has already been used '
+        + 'or has expired. Ask for a fresh one, or enter your email below to get a link by email.</div>';
+      return;
+    }
+  }
+
   const hash = location.hash || '';
   if (hash.includes('access_token=') || hash.includes('type=magiclink') || hash.includes('error_code=')) {
     for (let i = 0; i < 20; i++) {
